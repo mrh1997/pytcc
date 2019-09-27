@@ -1,0 +1,2 @@
+include  tinycc/VERSION  tinycc/*.c  tinycc/*.h  tinycc/stab.def
+include  pytcc/*.c  pytcc/*.h  pytcc/*.py  pytcc/*.pyx

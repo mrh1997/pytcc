@@ -1,0 +1,16 @@
+# python
+__pycache__
+
+# Unittesting (tox/pytest)
+/.pytest_cache
+/.tox
+
+# setup.py
+/PyTCC.egg-info
+/MANIFEST
+/dist
+/build
+
+# CLion
+/.idea
+/cmake-*
