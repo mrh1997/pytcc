@@ -24,6 +24,7 @@ add_library(pytcc SHARED
     tinycc/tccelf.c
     tinycc/tccasm.c
     tinycc/tccrun.c
+    tinycc/tccpe.c
     tinycc/i386-gen.c
     tinycc/i386-link.c
     tinycc/i386-asm.c)
@@ -31,6 +32,7 @@ add_compile_definitions(tcc
     "NDEBUG="
     ONE_SOURCE=0
     TCC_TARGET_I386=
+    TCC_TARGET_PE=
     TCC_VERSION="1.2.3"
     TCC_LIBTCC1=\"libtcc1-32.a\")
 target_include_directories(pytcc
