@@ -1,5 +1,6 @@
 from typing import List, Dict, Optional, Union
 from sys import getdefaultencoding
+from libc.stdint cimport uintptr_t
 
 
 DEF TCC_OUTPUT_MEMORY =      1 # output will be run in memory (default)
@@ -108,11 +109,11 @@ cdef class Binary:
         tcc_set_error_func(self.tcc_state, <void*>self, compile_error_func)
 
     @property
-    def closed(self):
+    def closed(self) -> bool:
         return self._closed
 
     @property
-    def warnings(self):
+    def warnings(self) -> List[str]:
         return self._warnings
 
     def __del__(self):
@@ -128,6 +129,24 @@ cdef class Binary:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
+
+    def __contains__(self, symbol_name):
+        """
+        returns True, if the symbol named "symbol_name" exists in this binary
+        """
+        symbol_name_cstr = symbol_name.encode('ascii')
+        return tcc_get_symbol(self.tcc_state, symbol_name_cstr) != NULL
+
+    def __getitem__(self, symbol_name:str) -> int:
+        """
+        returns the address of the symbol named "symbol_name"
+        """
+        symbol_name_cstr = symbol_name.encode('ascii')
+        cdef void * adr = tcc_get_symbol(self.tcc_state, symbol_name_cstr)
+        if adr == NULL:
+            raise KeyError(f'Symbol {symbol_name!r} is not defined')
+        else:
+            return <uintptr_t>adr
 
 
 class LinkUnit:
@@ -237,3 +256,11 @@ class TCC:
         with Binary(TCC_OUTPUT_MEMORY) as bin:
             self._build(bin, link_units)
             return tcc_run((<Binary>bin).tcc_state, 0, NULL)
+
+    def load(self, *link_units:List[Union[LinkUnit, str]]) -> Binary:
+        bin = Binary(TCC_OUTPUT_MEMORY)
+        self._build(bin, link_units)
+        r = tcc_relocate(bin.tcc_state, <void*>TCC_RELOCATE_AUTO)
+        if r == -1:
+            raise MemoryError('Error during Relocation of C Code')
+        return bin

@@ -1,5 +1,6 @@
 import pytest
 import pytcc
+import ctypes as ct
 
 
 @pytest.fixture
@@ -114,11 +115,42 @@ class TestTcc:
         with pytest.raises(pytcc.CompileError, match="ERRORMSG"):
             tcc.run(link_unit)
 
-    @pytest.mark.skip
-    def test_build_onWarnings_storesWarningsInBinaryMsgs(self, tcc):
+    def test_load_returnsOpenedBinaryWithNoWarnings(self, tcc):
+        binary = tcc.load(pytcc.CCode('int var;'))
+        assert not binary.closed
+        assert binary.warnings == []
+
+    def test_load_onWarnings_storesWarningsInBinaryMsgs(self, tcc):
         link_unit = pytcc.CCode('#define REDEF 1\n'
-                                      '#define REDEF 2\n'    # causes warning
-                                      '#define REDEF 3\n'    # causes warning
-                                      'int main(void) { return; }')
-        binary = tcc.build(link_unit)
-        assert len(binary.msgs) == 2 and 'REDEF' in binary.msgs[0].text
+                                '#define REDEF 2\n'    # causes warning
+                                '#define REDEF 3\n'    # causes warning
+                                'int main(void) { return; }')
+        binary = tcc.load(link_unit)
+        assert len(binary.warnings) == 2 and 'REDEF' in binary.warnings[0]
+
+
+class TestBinary:
+
+    def test_contains_onExistingSymbol_returnsTrue(self, tcc):
+        binary = tcc.load(pytcc.CCode('int var;'))
+        assert 'var' in binary
+
+    def test_contains_onNonExistingSymbol_returnsFalse(self, tcc):
+        binary = tcc.load(pytcc.CCode('int var;'))
+        assert 'non_existing_var' not in binary
+
+    def test_getitem_onExistingSymbol_returnsAddress(self, tcc):
+        binary = tcc.load(pytcc.CCode('int var = 1234;'))
+        var_obj = ct.c_int.from_address(binary['var'])
+        assert var_obj.value == 1234
+
+    def test_getitem_onNonExistingSymbol_raisesKeyError(self, tcc):
+        binary = tcc.load(pytcc.CCode('int var;'))
+        with pytest.raises(KeyError):
+            _ = binary['non_existing_var']
+
+    def test_getitem_onFunc_returnsCallableCFunc(self, tcc):
+        binary = tcc.load(pytcc.CCode('int func(int a, int b) {return (a+b);}'))
+        func_t = ct.CFUNCTYPE(ct.c_int, ct.c_int, ct.c_int)
+        func_obj = func_t(binary['func'])
+        assert func_obj(123, 456) == 123 + 456
