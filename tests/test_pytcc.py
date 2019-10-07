@@ -2,13 +2,21 @@ import pytest
 import pytcc
 
 
-# class CFile:
-#
-#     def test_init_onDefines_mergesDefines(self):
-#         tu = pytcc.TransUnit({'a': 1, 'b': 2}, c=3, d=4)
-#         assert tu.defines == dict(a=1, b=2, c=3, d=4)
-#
-#     def test_
+class TestCompileError:
+
+    exc = pytcc.CompileError('dir/subdir/name.c:123: error: text and more text')
+
+    def test_filename(self):
+        assert self.exc.filename == 'dir/subdir/name.c'
+
+    def test_lineno(self):
+        assert self.exc.lineno == 123
+
+    def test_type(self):
+        assert self.exc.type == 'error'
+
+    def test_text(self):
+        assert self.exc.text == 'text and more text'
 
 
 @pytest.fixture
@@ -98,3 +106,17 @@ def test_run_onOptions_ok():
                                   'int main(void) { return; }')
     with pytest.raises(pytcc.CompileError):
         tcc.run(link_unit)
+
+def test_run_onError_passesErrorInCompileErrorExc(tcc):
+    link_unit = pytcc.CCodeString("#error ERRORMSG")
+    with pytest.raises(pytcc.CompileError, match="ERRORMSG"):
+        tcc.run(link_unit)
+
+@pytest.mark.skip
+def test_build_onWarnings_storesWarningsInBinaryMsgs(tcc):
+    link_unit = pytcc.CCodeString('#define REDEF 1\n'
+                                  '#define REDEF 2\n'    # causes warning
+                                  '#define REDEF 3\n'    # causes warning
+                                  'int main(void) { return; }')
+    binary = tcc.build(link_unit)
+    assert len(binary.msgs) == 2 and 'REDEF' in binary.msgs[0].text

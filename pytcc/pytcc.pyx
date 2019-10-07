@@ -46,19 +46,64 @@ class CompileError(Exception):
     Any error that happens during compilation due to invalid code
     """
 
+    def __parts(self):
+        return [p.strip() for p in str(self).split(':', 3)]
+
+    @property
+    def filename(self):
+        """
+        Returns the name of the file in which the error occurred
+        (or <string> if CCodeString() was used)
+        """
+        filename, lineno, type, text = self.__parts()
+        return filename
+
+    @property
+    def lineno(self):
+        """
+        Returns the line number in which the error occured
+        """
+        filename, lineno, type, text = self.__parts()
+        return int(lineno)
+
+    @property
+    def type(self):
+        """
+        returns the error type. Usually "error". If option "Werror" is set,
+        this field can also be "warning"
+        """
+        filename, lineno, type, text = self.__parts()
+        return type
+
+    @property
+    def text(self):
+        """
+        The actual error text
+        (without additional info like filename, lineno, ...)
+        """
+        filename, lineno, type, text = self.__parts()
+        return text
+
+
+cdef void compile_error_func(void *opaque, const char *msg):
+    (<Binary> opaque).msgs.append(msg.decode('ascii'))
+
 
 cdef class Binary:
     """
     This represents the result of compiling multiple source files.
     """
     cdef TCCState * tcc_state
+    cdef list msgs
 
     def __init__(self, output):
         self.tcc_state = tcc_new()
+        self.msgs = []
         if self.tcc_state == NULL:
             raise MemoryError('Out of memory')
         tcc_set_lib_path(self.tcc_state, b'D:\\PyTCC\\tinycc\\win32')
         tcc_set_output_type(self.tcc_state, output)
+        tcc_set_error_func(self.tcc_state, <void*>self, compile_error_func)
 
     def close(self):
         tcc_delete(self.tcc_state)
@@ -96,7 +141,7 @@ class CCodeUnit(LinkUnit):
                 tcc_define_symbol(bin.tcc_state, c_str(def_name),
                                   c_str(str(def_val)))
         if self._link_c_code(bin) == -1:
-            raise CompileError('Invalid Code')
+            raise CompileError(bin.msgs[-1])
         for def_name in self.defines:
             tcc_undefine_symbol(bin.tcc_state, c_str(def_name))
 
