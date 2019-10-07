@@ -53,7 +53,7 @@ class CompileError(Exception):
     def filename(self):
         """
         Returns the name of the file in which the error occurred
-        (or <string> if CCodeString() was used)
+        (or <string> if CCode() was used)
         """
         filename, lineno, type, text = self.__parts()
         return filename
@@ -86,7 +86,7 @@ class CompileError(Exception):
 
 
 cdef void compile_error_func(void *opaque, const char *msg):
-    (<Binary> opaque).msgs.append(msg.decode('ascii'))
+    (<Binary> opaque)._warnings.append(msg.decode('ascii'))
 
 
 cdef class Binary:
@@ -94,19 +94,34 @@ cdef class Binary:
     This represents the result of compiling multiple source files.
     """
     cdef TCCState * tcc_state
-    cdef list msgs
+    cdef list _warnings
+    cdef _closed
 
     def __init__(self, output):
         self.tcc_state = tcc_new()
-        self.msgs = []
+        self._warnings = []
+        self._closed = False
         if self.tcc_state == NULL:
             raise MemoryError('Out of memory')
         tcc_set_lib_path(self.tcc_state, b'D:\\PyTCC\\tinycc\\win32')
         tcc_set_output_type(self.tcc_state, output)
         tcc_set_error_func(self.tcc_state, <void*>self, compile_error_func)
 
+    @property
+    def closed(self):
+        return self._closed
+
+    @property
+    def warnings(self):
+        return self._warnings
+
+    def __del__(self):
+        if not self._closed:
+            self.close()
+
     def close(self):
         tcc_delete(self.tcc_state)
+        self._closed = True
 
     def __enter__(self) -> 'Binary':
         return self
@@ -124,7 +139,7 @@ class LinkUnit:
         raise NotImplementedError('This is an abstract base class')
 
 
-class CCodeUnit(LinkUnit):
+class CompileUnit(LinkUnit):
     """
     Any kind of C Source Code that can be passed to TCC.run(), ...
     """
@@ -141,7 +156,7 @@ class CCodeUnit(LinkUnit):
                 tcc_define_symbol(bin.tcc_state, c_str(def_name),
                                   c_str(str(def_val)))
         if self._link_c_code(bin) == -1:
-            raise CompileError(bin.msgs[-1])
+            raise CompileError(bin.warnings[-1])
         for def_name in self.defines:
             tcc_undefine_symbol(bin.tcc_state, c_str(def_name))
 
@@ -149,7 +164,7 @@ class CCodeUnit(LinkUnit):
         raise NotImplementedError('Has to be implemented by ancestor class')
 
 
-class CCodeFile(CCodeUnit):
+class CFile(CompileUnit):
     """
     Represents a .c file on your local file system that shall be compiled with
     a set of defines. Has to be passed to TCCConfig.run(),
@@ -163,7 +178,7 @@ class CCodeFile(CCodeUnit):
         return tcc_add_file(bin.tcc_state, c_str(self.c_file))
 
 
-class CCodeString(CCodeUnit):
+class CCode(CompileUnit):
     """
     A in-memory C source code file represented as python string
     """
@@ -214,7 +229,7 @@ class TCC:
                                   c_str(str(def_val)))
         for link_unit in link_units:
             if isinstance(link_unit, str):
-                CCodeFile(link_unit).link_into(bin)
+                CFile(link_unit).link_into(bin)
             else:
                 link_unit.link_into(bin)
 
