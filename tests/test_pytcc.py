@@ -63,3 +63,38 @@ def test_run_onLinkUnitsWithDifferentDefines_compilesWithDifferentDefines(tcc):
     link_unit2 = pytcc.CCodeString("#ifdef B\n#error B defined\n#endif", A='1')
     link_unit3 = pytcc.CCodeString("void main(void) { return; }")
     tcc.run(link_unit1, link_unit2, link_unit3)
+
+def test_run_onTccDefine_compilesWithDefines():
+    tcc = pytcc.TCC(defines={'DEF1': '12'}, DEF2=34)
+    link_unit = pytcc.CCodeString("int main(void) { return(DEF1 + DEF2); }")
+    assert tcc.run(link_unit) == 12 + 34
+
+@pytest.mark.skip("This feature is not implemented yet")
+def test_run_onLinkUnitDefineOverwritesTccDefine_restoresTccDefineAfterLinkUnit():
+    tcc = pytcc.TCC(DEF=1)
+    link_unit1 = pytcc.CCodeString("#if DEF!=2\n#error inv. DEF\n#endif", DEF=2)
+    link_unit2 = pytcc.CCodeString("#if DEF!=1\n#error inv. DEF\n#endif")
+    link_unit3 = pytcc.CCodeString("void main(void) { return; }")
+    tcc.run(link_unit1, link_unit2, link_unit3)
+
+def test_run_onTccIncludeDir_ok(tmpdir):
+    tcc = pytcc.TCC(include_dirs=[str(tmpdir)])
+    tmpdir.join('incl.h').write('#define DEF  123')
+    link_unit = pytcc.CCodeString('#include "incl.h"\n'
+                                  'int main(void) { return(DEF); }')
+    assert tcc.run(link_unit) == 123
+
+def test_run_onTccSysIncludeDir_ok(tmpdir):
+    tcc = pytcc.TCC(sys_include_dirs=[str(tmpdir)])
+    tmpdir.join('incl.h').write('#define DEF  123')
+    link_unit = pytcc.CCodeString('#include "incl.h"\n'
+                                  'int main(void) { return(DEF); }')
+    assert tcc.run(link_unit) == 123
+
+def test_run_onOptions_ok():
+    tcc = pytcc.TCC('Werror')
+    link_unit = pytcc.CCodeString('#define REDEF 1\n'
+                                  '#define REDEF 2\n'    # causes warning
+                                  'int main(void) { return; }')
+    with pytest.raises(pytcc.CompileError):
+        tcc.run(link_unit)

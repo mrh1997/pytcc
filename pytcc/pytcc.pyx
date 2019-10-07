@@ -155,13 +155,18 @@ class TCC:
         self.library_dirs = list(library_dirs)
 
     def _build(self, bin:Binary, link_units:List[LinkUnit]):
-        #for incl_path in self.include_dirs:
-        #    tcc_add_include_path(bin.tcc_state, c_str(incl_path))
-        #for sys_incl_path in self.sys_include_dirs:
-        #    tcc_add_sysinclude_path(bin.tcc_state, c_str(sys_incl_path))
-        #for def_name, def_val in self.defines.items():
-        #    def_val_cstr = c_str(str(def_val)) if def_val is not None else None
-        #    tcc_define_symbol(bin.tcc_state, c_str(def_name), def_val_cstr)
+        for incl_path in self.include_dirs:
+            tcc_add_include_path(bin.tcc_state, c_str(incl_path))
+        for sys_incl_path in self.sys_include_dirs:
+            tcc_add_sysinclude_path(bin.tcc_state, c_str(sys_incl_path))
+        for option in self.options:
+            tcc_set_options(bin.tcc_state, c_str('-'+option))
+        for def_name, def_val in self.defines.items():
+            if def_val is None:
+                tcc_define_symbol(bin.tcc_state, c_str(def_name), NULL)
+            else:
+                tcc_define_symbol(bin.tcc_state, c_str(def_name),
+                                  c_str(str(def_val)))
         for link_unit in link_units:
             if isinstance(link_unit, str):
                 CCodeFile(link_unit).link_into(bin)
