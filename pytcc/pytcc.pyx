@@ -97,12 +97,14 @@ cdef class InMemBinary:
     """
     cdef TCCState * tcc_state
     cdef list _warnings
-    cdef _closed
+    cdef int _closed
+    cdef int _relocated
 
     def __init__(self, output):
         self.tcc_state = tcc_new()
         self._warnings = []
         self._closed = False
+        self._relocated = False
         if self.tcc_state == NULL:
             raise MemoryError('Out of memory')
         tcc_set_lib_path(self.tcc_state, b'D:\\PyTCC\\tinycc\\win32')
@@ -115,17 +117,25 @@ cdef class InMemBinary:
 
     @property
     def warnings(self) -> List[str]:
+        self.relocate()
         return self._warnings
 
+    def run(self):
+        if self._relocated:
+            raise NotImplementedError(
+                'Currently running after relocation is not supported')
+        return tcc_run(self.tcc_state, 0, NULL)
+
     def __del__(self):
-        if not self._closed:
-            self.close()
+        self.close()
 
     def close(self):
-        tcc_delete(self.tcc_state)
-        self._closed = True
+        if not self._closed:
+            tcc_delete(self.tcc_state)
+            self._closed = True
 
     def __enter__(self) -> 'InMemBinary':
+        self.relocate()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -135,6 +145,7 @@ cdef class InMemBinary:
         """
         returns True, if the symbol named "symbol_name" exists in this binary
         """
+        self.relocate()
         symbol_name_cstr = symbol_name.encode('ascii')
         return tcc_get_symbol(self.tcc_state, symbol_name_cstr) != NULL
 
@@ -142,12 +153,24 @@ cdef class InMemBinary:
         """
         returns the address of the symbol named "symbol_name"
         """
+        self.relocate()
         symbol_name_cstr = symbol_name.encode('ascii')
         cdef void * adr = tcc_get_symbol(self.tcc_state, symbol_name_cstr)
         if adr == NULL:
             raise KeyError(f'Symbol {symbol_name!r} is not defined')
         else:
             return <uintptr_t>adr
+
+    def relocate(self):
+        """
+        ensures that Binary is relocated in memory.
+        Can be called multiple times.
+        """
+        if not self._relocated:
+            if tcc_relocate(self.tcc_state, <void*>TCC_RELOCATE_AUTO) == -1:
+                raise MemoryError('Error during Relocation of C Code')
+            self._relocated = True
+
 
 
 class LinkUnit:
@@ -253,16 +276,10 @@ class TCC:
             else:
                 link_unit.link_into(bin)
 
-    def run(self, *link_units:List[Union[LinkUnit, str]]) -> int:
-        with InMemBinary(TCC_OUTPUT_MEMORY) as bin:
-            self._build(bin, link_units)
-            return tcc_run((<InMemBinary>bin).tcc_state, 0, NULL)
-
-    def build_to_mem(self, *link_units:List[Union[LinkUnit, str]]) \
-            -> InMemBinary:
+    def build_to_mem(self, *link_units:List[Union[LinkUnit, str]],
+                     eager:bool=False) -> InMemBinary:
         bin = InMemBinary(TCC_OUTPUT_MEMORY)
         self._build(bin, link_units)
-        r = tcc_relocate(bin.tcc_state, <void*>TCC_RELOCATE_AUTO)
-        if r == -1:
-            raise MemoryError('Error during Relocation of C Code')
+        if eager:
+            bin.relocate()
         return bin
