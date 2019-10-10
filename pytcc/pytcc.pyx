@@ -87,12 +87,13 @@ class CompileError(Exception):
 
 
 cdef void compile_error_func(void *opaque, const char *msg):
-    (<Binary> opaque)._warnings.append(msg.decode('ascii'))
+    (<InMemBinary> opaque)._warnings.append(msg.decode('ascii'))
 
 
-cdef class Binary:
+cdef class InMemBinary:
     """
-    This represents the result of compiling multiple source files.
+    This represents the output of TCC when processing the input with
+    .build_to_mem().
     """
     cdef TCCState * tcc_state
     cdef list _warnings
@@ -124,7 +125,7 @@ cdef class Binary:
         tcc_delete(self.tcc_state)
         self._closed = True
 
-    def __enter__(self) -> 'Binary':
+    def __enter__(self) -> 'InMemBinary':
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -154,7 +155,7 @@ class LinkUnit:
     A link unit is an abstract base class for any object that can be linked
     with TCC
     """
-    def link_into(self, bin:Binary):
+    def link_into(self, bin:InMemBinary):
         raise NotImplementedError('This is an abstract base class')
 
 
@@ -167,7 +168,7 @@ class CompileUnit(LinkUnit):
         self.defines = defines2
         self.defines.update(defines or {})
 
-    def link_into(self, bin:Binary):
+    def link_into(self, bin:InMemBinary):
         for def_name, def_val in self.defines.items():
             if def_val is None:
                 tcc_define_symbol(bin.tcc_state, c_str(def_name), NULL)
@@ -179,7 +180,7 @@ class CompileUnit(LinkUnit):
         for def_name in self.defines:
             tcc_undefine_symbol(bin.tcc_state, c_str(def_name))
 
-    def _link_c_code(self, bin:Binary) -> int:
+    def _link_c_code(self, bin:InMemBinary) -> int:
         raise NotImplementedError('Has to be implemented by ancestor class')
 
 
@@ -193,7 +194,7 @@ class CFile(CompileUnit):
         super().__init__(defines, **defines2)
         self.c_file = c_file
 
-    def _link_c_code(self, bin:Binary):
+    def _link_c_code(self, bin:InMemBinary):
         return tcc_add_file(bin.tcc_state, c_str(self.c_file))
 
 
@@ -206,7 +207,7 @@ class CCode(CompileUnit):
         super().__init__(defines, **defines2)
         self.c_code = c_code
 
-    def _link_c_code(self, bin:Binary):
+    def _link_c_code(self, bin:InMemBinary):
         return tcc_compile_string(bin.tcc_state, self.c_code.encode('ascii'))
 
 
@@ -233,7 +234,7 @@ class TCC:
         self.sys_include_dirs = list(sys_include_dirs)
         self.library_dirs = list(library_dirs)
 
-    def _build(self, bin:Binary, link_units:List[LinkUnit]):
+    def _build(self, bin:InMemBinary, link_units:List[LinkUnit]):
         for incl_path in self.include_dirs:
             tcc_add_include_path(bin.tcc_state, c_str(incl_path))
         for sys_incl_path in self.sys_include_dirs:
@@ -253,12 +254,13 @@ class TCC:
                 link_unit.link_into(bin)
 
     def run(self, *link_units:List[Union[LinkUnit, str]]) -> int:
-        with Binary(TCC_OUTPUT_MEMORY) as bin:
+        with InMemBinary(TCC_OUTPUT_MEMORY) as bin:
             self._build(bin, link_units)
-            return tcc_run((<Binary>bin).tcc_state, 0, NULL)
+            return tcc_run((<InMemBinary>bin).tcc_state, 0, NULL)
 
-    def load(self, *link_units:List[Union[LinkUnit, str]]) -> Binary:
-        bin = Binary(TCC_OUTPUT_MEMORY)
+    def build_to_mem(self, *link_units:List[Union[LinkUnit, str]]) \
+            -> InMemBinary:
+        bin = InMemBinary(TCC_OUTPUT_MEMORY)
         self._build(bin, link_units)
         r = tcc_relocate(bin.tcc_state, <void*>TCC_RELOCATE_AUTO)
         if r == -1:
