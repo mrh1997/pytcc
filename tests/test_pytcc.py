@@ -27,7 +27,7 @@ class TestCompileError:
 
 class TestTcc:
     
-    def run(self, tcc, *link_units, args=[]):
+    def run(self, tcc, *link_units, args=()):
         bin = tcc.build_to_mem(*link_units)
         return bin.run(*args)
 
@@ -62,20 +62,30 @@ class TestTcc:
         link_unit2 = pytcc.CCode("int f() { return(4321); }")
         assert self.run(tcc, link_unit1, link_unit2) == 4321
 
+    def test_buildToMem_returnsOpenedAndNotRelocatInMemBinary(self, tcc):
+        binary = tcc.build_to_mem(pytcc.CCode(''))
+        assert not binary.closed
+        assert not binary.relocated
+
+    def test_buildToMem_onEagerIsTrue_returnsOpenedAndRelocatInMemBinary(self, tcc):
+        binary = tcc.build_to_mem(pytcc.CCode(''), eager=True)
+        assert not binary.closed
+        assert binary.relocated
+
     def test_buildToMem_onDefines_compilesWithDefines(self, tcc):
         link_unit = pytcc.CCode("int main(void) { return(DEF1 + DEF2); }",
                                 {'DEF1': '12'}, DEF2=34)
         assert self.run(tcc, link_unit) == 12 + 34
 
     def test_buildToMem_onEmptyDefine_setsDefineTo1(self, tcc):
-        link_unit = pytcc.CCode("#if DEF!=1\n#error B\n#endif\n",
+        link_unit = pytcc.CCode('#if DEF!=1\n#error B\n#endif\n',
                                 DEF=None)
-        tcc.build_to_mem(link_unit, eager=True)
+        tcc.build_to_mem(link_unit)
 
     def test_buildToMem_onLinkUnitsWithDifferentDefines_compilesWithDifferentDefines(self, tcc):
         link_unit1 = pytcc.CCode("#ifdef A\n#error A defined\n#endif", B='1')
         link_unit2 = pytcc.CCode("#ifdef B\n#error B defined\n#endif", A='1')
-        tcc.build_to_mem(link_unit1, link_unit2, eager=True)
+        tcc.build_to_mem(link_unit1, link_unit2)
 
     def test_buildToMem_onTccDefine_compilesWithDefines(self):
         tcc = pytcc.TCC(defines={'DEF1': '12'}, DEF2=34)
@@ -87,7 +97,7 @@ class TestTcc:
         tcc = pytcc.TCC(DEF=1)
         link_unit1 = pytcc.CCode("#if DEF!=2\n#error inv. DEF\n#endif", DEF=2)
         link_unit2 = pytcc.CCode("#if DEF!=1\n#error inv. DEF\n#endif")
-        tcc.build_to_mem(link_unit1, link_unit2, eager=True)
+        tcc.build_to_mem(link_unit1, link_unit2)
 
     def test_buildToMem_onTccIncludeDir_ok(self, tmpdir):
         tcc = pytcc.TCC(include_dirs=[str(tmpdir)])
@@ -108,19 +118,15 @@ class TestTcc:
         link_unit = pytcc.CCode('#define REDEF 1\n'
                                 '#define REDEF 2\n')    # causes warning
         with pytest.raises(pytcc.CompileError):
-            tcc.build_to_mem(link_unit, eager=True)
+            tcc.build_to_mem(link_unit)
 
     def test_buildToMem_onError_passesErrorInCompileErrorExc(self, tcc):
         link_unit = pytcc.CCode("#error ERRORMSG")
         with pytest.raises(pytcc.CompileError, match="ERRORMSG"):
-            tcc.build_to_mem(link_unit, eager=True)
-
-    @pytest.mark.fail
-    def run_with_args(self):
-        raise NotImplementedError()
+            tcc.build_to_mem(link_unit)
 
     def test_buildToMem_returnsOpenedBinaryWithNoWarnings(self, tcc):
-        binary = tcc.build_to_mem(pytcc.CCode('int var;'), eager=True)
+        binary = tcc.build_to_mem(pytcc.CCode('int var;'))
         assert not binary.closed
         assert binary.warnings == []
 
@@ -158,3 +164,14 @@ class TestInMemBinary:
         func_t = ct.CFUNCTYPE(ct.c_int, ct.c_int, ct.c_int)
         func_obj = func_t(binary['func'])
         assert func_obj(123, 456) == 123 + 456
+
+    def test_getItem_onClosedBinary_raisesValueError(self, tcc):
+        binary = tcc.build_to_mem(pytcc.CCode('int var;'))
+        binary.close()
+        with pytest.raises(ValueError):
+            _ = binary['var']
+
+    def test_contextMgr_closesAtContextEnd(self, tcc):
+        with tcc.build_to_mem() as binary:
+            assert not binary.closed
+        assert binary.closed

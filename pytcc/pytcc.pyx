@@ -112,6 +112,10 @@ cdef class InMemBinary:
         tcc_set_error_func(self.tcc_state, <void*>self, compile_error_func)
 
     @property
+    def relocated(self) -> bool:
+        return self._relocated
+
+    @property
     def closed(self) -> bool:
         return self._closed
 
@@ -124,7 +128,12 @@ cdef class InMemBinary:
         if self._relocated:
             raise NotImplementedError(
                 'Currently running after relocation is not supported')
-        return tcc_run(self.tcc_state, 0, NULL)
+        if self._closed:
+            raise ValueError('InMemoryBinary is already closed')
+        result = tcc_run(self.tcc_state, 0, NULL)
+        self._relocated = True
+        self.close()
+        return result
 
     def __del__(self):
         self.close()
@@ -166,6 +175,8 @@ cdef class InMemBinary:
         ensures that Binary is relocated in memory.
         Can be called multiple times.
         """
+        if self._closed:
+            raise ValueError('InMemoryBinary is already closed')
         if not self._relocated:
             if tcc_relocate(self.tcc_state, <void*>TCC_RELOCATE_AUTO) == -1:
                 raise MemoryError('Error during Relocation of C Code')
