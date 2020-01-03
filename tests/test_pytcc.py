@@ -92,7 +92,6 @@ class TestTcc:
         link_unit = pytcc.CCode("int main(void) { return(DEF1 + DEF2); }")
         assert self.run(tcc, link_unit) == 12 + 34
 
-    @pytest.mark.skip("This feature is not implemented yet")
     def test_buildToMem_onLinkUnitDefineOverwritesTccDefine_restoresTccDefineAfterLinkUnit(self):
         tcc = pytcc.TCC(DEF=1)
         link_unit1 = pytcc.CCode("#if DEF!=2\n#error inv. DEF\n#endif", DEF=2)

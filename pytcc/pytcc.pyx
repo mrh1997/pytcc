@@ -99,17 +99,39 @@ cdef class InMemBinary:
     cdef list _warnings
     cdef int _closed
     cdef int _relocated
+    cdef dict _global_defines
 
-    def __init__(self, output):
+    def __init__(self, output:int):
         self.tcc_state = tcc_new()
         self._warnings = []
         self._closed = False
         self._relocated = False
         if self.tcc_state == NULL:
             raise MemoryError('Out of memory')
+        self._global_defines = {}
         tcc_set_lib_path(self.tcc_state, b'D:\\PyTCC\\tinycc\\win32')
         tcc_set_output_type(self.tcc_state, output)
         tcc_set_error_func(self.tcc_state, <void*>self, compile_error_func)
+
+    def define(self, name:str, value:Union[str, None]=None, is_global=False):
+        if value is None:
+            tcc_define_symbol(self.tcc_state, c_str(name), NULL)
+        else:
+            tcc_define_symbol(self.tcc_state, c_str(name), c_str(str(value)))
+        if is_global:
+            self._global_defines[name] = value
+
+    def undef(self, name:str, is_global=False):
+        if not is_global and name in self._global_defines:
+            self.define(name, self._global_defines[name])
+        else:
+            tcc_undefine_symbol(self.tcc_state, c_str(name))
+        if is_global:
+            del self._global_defines[name]
+
+    @property
+    def global_defines(self) -> Dict[str, Union[str, None]]:
+        return self._global_defines
 
     @property
     def relocated(self) -> bool:
@@ -204,15 +226,11 @@ class CompileUnit(LinkUnit):
 
     def link_into(self, bin:InMemBinary):
         for def_name, def_val in self.defines.items():
-            if def_val is None:
-                tcc_define_symbol(bin.tcc_state, c_str(def_name), NULL)
-            else:
-                tcc_define_symbol(bin.tcc_state, c_str(def_name),
-                                  c_str(str(def_val)))
+            bin.define(def_name, def_val)
         if self._link_c_code(bin) == -1:
             raise CompileError(bin.warnings[-1])
         for def_name in self.defines:
-            tcc_undefine_symbol(bin.tcc_state, c_str(def_name))
+            bin.undef(def_name)
 
     def _link_c_code(self, bin:InMemBinary) -> int:
         raise NotImplementedError('Has to be implemented by ancestor class')
@@ -276,16 +294,11 @@ class TCC:
         for option in self.options:
             tcc_set_options(bin.tcc_state, c_str('-'+option))
         for def_name, def_val in self.defines.items():
-            if def_val is None:
-                tcc_define_symbol(bin.tcc_state, c_str(def_name), NULL)
-            else:
-                tcc_define_symbol(bin.tcc_state, c_str(def_name),
-                                  c_str(str(def_val)))
+            bin.define(def_name, def_val, is_global=True)
         for link_unit in link_units:
             if isinstance(link_unit, str):
-                CFile(link_unit).link_into(bin)
-            else:
-                link_unit.link_into(bin)
+                link_unit = CFile(link_unit)
+            link_unit.link_into(bin)
 
     def build_to_mem(self, *link_units:List[Union[LinkUnit, str]],
                      eager:bool=False) -> InMemBinary:
