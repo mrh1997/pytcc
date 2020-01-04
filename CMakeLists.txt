@@ -17,7 +17,6 @@ add_custom_command(
 
 add_library(pytcc SHARED
     pytcc/pytcc.c
-    tinycc/tcc.c
     tinycc/libtcc.c
     tinycc/tccpp.c
     tinycc/tccgen.c

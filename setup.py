@@ -13,7 +13,6 @@ TCC_SRC_DIR = 'tinycc'
 TCC_VERSION = open(to_tinycc_path('VERSION'), 'rt').read().strip()
 
 TCC_CORE_FILES = list(map(to_tinycc_path, [
-    'tcc.c',
     'libtcc.c',
     'tccpp.c',
     'tccgen.c',
@@ -37,7 +36,7 @@ setup(
             sources=["pytcc/pytcc.pyx"] + TCC_CORE_FILES + TCC_I386_FILES,
             define_macros=[('ONE_SOURCE', '0'),
                            ('TCC_TARGET_I386', None),
-                           ('TCC_TARGET_PE', None)
+                           ('TCC_TARGET_PE', None),
                            ('TCC_VERSION', r'\"{}\"'.format(TCC_VERSION)),
                            ('TCC_LIBTCC1', r'\"libtcc1-32.a\"'),],
             include_dirs=['tinycc'])],
