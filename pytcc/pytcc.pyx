@@ -1,6 +1,9 @@
 from typing import List, Dict, Optional, Union
-from sys import getdefaultencoding
 from libc.stdint cimport uintptr_t
+from pathlib import Path
+import os
+import platform
+import sys
 
 
 DEF TCC_OUTPUT_MEMORY =      1 # output will be run in memory (default)
@@ -39,10 +42,16 @@ cdef extern from "libtcc.h":
 
 
 def c_str(s:str) -> bytes:
-    return s.encode(getdefaultencoding())
+    return s.encode(sys.getdefaultencoding())
 
 
-class CompileError(Exception):
+class TccError(Exception):
+    """
+    Generic base class for TCC errors
+    """
+
+
+class CompileError(TccError):
     """
     Any error that happens during compilation due to invalid code
     """
@@ -102,18 +111,18 @@ cdef class InMemBinary:
     cdef dict _global_defines
 
     def __init__(self, output:int):
-        self.tcc_state = tcc_new()
         self._warnings = []
         self._closed = False
         self._relocated = False
+        self._global_defines = {}
+        self.tcc_state = tcc_new()
         if self.tcc_state == NULL:
             raise MemoryError('Out of memory')
-        self._global_defines = {}
         tcc_set_lib_path(self.tcc_state, b'D:\\PyTCC\\tinycc\\win32')
         tcc_set_output_type(self.tcc_state, output)
         tcc_set_error_func(self.tcc_state, <void*>self, compile_error_func)
 
-    def define(self, name:str, value:Union[str, None]=None, is_global=False):
+    cdef define(self, name:str, value:Union[str, None]=None, is_global=False):
         if value is None:
             tcc_define_symbol(self.tcc_state, c_str(name), NULL)
         else:
@@ -121,7 +130,7 @@ cdef class InMemBinary:
         if is_global:
             self._global_defines[name] = value
 
-    def undef(self, name:str, is_global=False):
+    cdef undef(self, name:str, is_global=False):
         if not is_global and name in self._global_defines:
             self.define(name, self._global_defines[name])
         else:
@@ -201,9 +210,51 @@ cdef class InMemBinary:
             raise ValueError('InMemoryBinary is already closed')
         if not self._relocated:
             if tcc_relocate(self.tcc_state, <void*>TCC_RELOCATE_AUTO) == -1:
-                raise MemoryError('Error during Relocation of C Code')
+                self.error('Error during Relocation of C Code')
             self._relocated = True
 
+    def error(self, msg):
+        if len(self._warnings) > 0:
+            raise TccError(msg + ': ' + self._warnings[-1])
+        else:
+            raise TccError(msg)
+
+
+class FileBinary:
+
+    def __init__(self, filename:os.PathLike, warnings:List[str],
+                 auto_add_suffix=True, dest_os=None):
+        abs_filename = Path.cwd() / Path(filename)
+        if auto_add_suffix:
+            suffix = self.DEFAULT_SUFFIXES[dest_os or platform.system()]
+            self.filename = abs_filename.with_suffix(suffix)
+        else:
+            self.filename = abs_filename
+        self.warnings = warnings
+
+
+class ExeBinary(FileBinary):
+    """
+    This represents the output of TCC when processing the input with
+    build_to_exe()
+    """
+
+    DEFAULT_SUFFIXES = dict(
+        Windows='.exe',
+        Linux='',
+        Darwin='')
+
+
+class LibBinary(FileBinary):
+    """
+    This represents the output of TCC when processing the input with
+    build_to_lib()
+    """
+
+    DEFAULT_SUFFIXES = dict(
+        Windows='.dll',
+        Linux='.so',
+        Darwin='.dylib')
 
 
 class LinkUnit:
@@ -292,7 +343,7 @@ class TCC:
         for sys_incl_path in self.sys_include_dirs:
             tcc_add_sysinclude_path(bin.tcc_state, c_str(sys_incl_path))
         for option in self.options:
-            tcc_set_options(bin.tcc_state, c_str('-'+option))
+            tcc_set_options(bin.tcc_state, c_str(option))
         for def_name, def_val in self.defines.items():
             bin.define(def_name, def_val, is_global=True)
         for link_unit in link_units:
@@ -307,3 +358,24 @@ class TCC:
         if eager:
             bin.relocate()
         return bin
+
+    def build_to_exe(self, filename:os.PathLike,
+                     *link_units:List[Union[LinkUnit, str]],
+                     auto_add_suffix=True) -> ExeBinary:
+        mem_bin = InMemBinary(TCC_OUTPUT_EXE)
+        self._build(mem_bin, link_units)
+        exe_bin = ExeBinary(filename, mem_bin._warnings, auto_add_suffix)
+        if tcc_output_file(mem_bin.tcc_state, c_str(str(exe_bin.filename)))!=0:
+            mem_bin.error(f'Failed to write executable to {exe_bin.filename}')
+        return exe_bin
+
+    def build_to_lib(self, filename:os.PathLike,
+                     *link_units:List[Union[LinkUnit, str]],
+                     auto_add_suffix=True) -> LibBinary:
+        mem_bin = InMemBinary(TCC_OUTPUT_DLL)
+        self._build(mem_bin, link_units)
+        lib_bin = LibBinary(filename, mem_bin._warnings, auto_add_suffix)
+        if tcc_output_file(mem_bin.tcc_state, c_str(str(lib_bin.filename)))!=0:
+            mem_bin.error(f'Failed to write dynamic library to '
+                          f'{lib_bin.filename}')
+        return lib_bin

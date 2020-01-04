@@ -1,6 +1,10 @@
 import pytest
 import pytcc
 import ctypes as ct
+import subprocess
+import platform
+import os
+from pathlib import Path
 
 
 @pytest.fixture
@@ -26,7 +30,9 @@ class TestCompileError:
 
 
 class TestTcc:
-    
+
+    SIMPLE_LINK_UNIT = pytcc.CCode('int main(void) { return 1; }')
+
     def run(self, tcc, *link_units, args=()):
         bin = tcc.build_to_mem(*link_units)
         return bin.run(*args)
@@ -113,7 +119,7 @@ class TestTcc:
         assert self.run(tcc, link_unit) == 123
 
     def test_buildToMem_onOptions_ok(self):
-        tcc = pytcc.TCC('Werror')
+        tcc = pytcc.TCC('-Werror')
         link_unit = pytcc.CCode('#define REDEF 1\n'
                                 '#define REDEF 2\n')    # causes warning
         with pytest.raises(pytcc.CompileError):
@@ -135,6 +141,72 @@ class TestTcc:
                                 '#define REDEF 3\n')   # causes warning
         binary = tcc.build_to_mem(link_unit)
         assert len(binary.warnings) == 2 and 'REDEF' in binary.warnings[0]
+
+    def test_buildToExe_createsExecutableFile(self, tcc, tmp_path):
+        if platform.system() == 'Windows':
+            filename = tmp_path / 'program.exe'
+        else:
+            filename = tmp_path / 'program'
+        link_unit = pytcc.CCode('int main(void) { return 123; }')
+        tcc.build_to_exe(filename, link_unit)
+        assert subprocess.call(str(filename)) == 123
+
+    def test_buildToExe_addsExeSuffixToReturnedFilename(self, tcc, tmp_path):
+        exe_binary = tcc.build_to_exe(tmp_path/'program', self.SIMPLE_LINK_UNIT)
+        assert exe_binary.filename.suffix == '.exe'
+
+    def test_buildToExe_makesReturnedFilenameAbsolute(self, tcc, tmp_path):
+        original_path = Path.cwd()
+        os.chdir(tmp_path)
+        try:
+            exe_binary = tcc.build_to_exe('program', self.SIMPLE_LINK_UNIT)
+        finally:
+            os.chdir(original_path)
+        assert exe_binary.filename.parent == tmp_path
+
+    def test_buildToExe_withAutoAddSuffixSetToFalse_doesNotAddExeSuffix(self, tcc, tmp_path):
+        exe_binary = tcc.build_to_exe(tmp_path/'program', self.SIMPLE_LINK_UNIT,
+                                      auto_add_suffix=False)
+        assert exe_binary.filename.suffix == ''
+
+    def test_buildToLib_createsDynamicLibraryFile(self, tcc, tmp_path):
+        if platform.system() == 'Windows':
+            filename = tmp_path / 'library.dll'
+        elif platform.system() == 'Darwin':
+            filename = tmp_path / 'program.dylib'
+        else:
+            filename = tmp_path / 'program.so'
+        link_unit = pytcc.CCode('__attribute__((dllexport)) int func(void);\n'
+                                'int func(void) { return 123; }')
+        tcc.build_to_lib(filename, link_unit)
+        dll = ct.CDLL(str(filename))
+        assert dll.func() == 123
+
+    def test_buildToLib_onDynamicOption_exportsAllSymbols(self, tmp_path):
+        filename = tmp_path / 'library.dll'
+        link_unit = pytcc.CCode('int func(void) { return 123; }')
+        tcc = pytcc.TCC('-rdynamic')
+        tcc.build_to_lib(filename, link_unit)
+        dll = ct.CDLL(str(filename))
+        assert dll.func() == 123
+
+    def test_buildToLib_addsDllSuffixToReturnedFilename(self, tcc, tmp_path):
+        dll_binary = tcc.build_to_lib(tmp_path/'library', pytcc.CCode(''))
+        assert dll_binary.filename.suffix == '.dll'
+
+    def test_buildToLib_makesReturnedFilenameAbsolute(self, tcc, tmp_path):
+        original_path = Path.cwd()
+        os.chdir(tmp_path)
+        try:
+            dll_binary = tcc.build_to_lib(tmp_path/'library', pytcc.CCode(''))
+        finally:
+            os.chdir(original_path)
+        assert dll_binary.filename.parent == tmp_path
+
+    def test_buildToLib_withAutoAddSuffixSetToFalse_doesNotAddSuffix(self, tcc, tmp_path):
+        exe_binary = tcc.build_to_lib(tmp_path/'library', pytcc.CCode(''),
+                                      auto_add_suffix=False)
+        assert exe_binary.filename.suffix == ''
 
 
 class TestInMemBinary:
