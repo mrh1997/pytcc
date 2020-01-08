@@ -222,7 +222,7 @@ cdef class InMemBinary:
 
 class FileBinary:
 
-    def __init__(self, filename:os.PathLike, warnings:List[str],
+    def __init__(self, filename:os.PathLike, warnings:List[str]=None,
                  auto_add_suffix=True, dest_os=None):
         abs_filename = Path.cwd() / Path(filename)
         if auto_add_suffix:
@@ -230,7 +230,7 @@ class FileBinary:
             self.filename = abs_filename.with_suffix(suffix)
         else:
             self.filename = abs_filename
-        self.warnings = warnings
+        self.warnings = warnings or []
 
 
 class ExeBinary(FileBinary):
@@ -266,6 +266,23 @@ class LinkUnit:
         raise NotImplementedError('This is an abstract base class')
 
 
+class ArchBinary(FileBinary, LinkUnit):
+    """
+    An archive binary represents a static library.
+    It can be the the result of build_to_arch() plus the input
+    to build_to_*().
+    """
+
+    DEFAULT_SUFFIXES = dict(
+        Windows='.a',
+        Linux='.a',
+        Darwin='.a')
+
+    def link_into(self, bin:InMemBinary):
+        if tcc_add_file(bin.tcc_state, c_str(str(self.filename))) == -1:
+            raise CompileError(bin.warnings[-1])
+
+
 class CompileUnit(LinkUnit):
     """
     Any kind of C Source Code that can be passed to TCC.run(), ...
@@ -287,18 +304,26 @@ class CompileUnit(LinkUnit):
         raise NotImplementedError('Has to be implemented by ancestor class')
 
 
-class CFile(CompileUnit):
+class SourceFile(CompileUnit):
     """
     Represents a .c file on your local file system that shall be compiled with
     a set of defines. Has to be passed to TCCConfig.run(),
     """
 
-    def __init__(self, c_file, defines=None, **defines2):
+    def __init__(self, filename, defines=None, **defines2):
         super().__init__(defines, **defines2)
-        self.c_file = c_file
+        self.filename = filename
 
     def _link_c_code(self, bin:InMemBinary):
-        return tcc_add_file(bin.tcc_state, c_str(self.c_file))
+        return tcc_add_file(bin.tcc_state, c_str(self.filename))
+
+
+class CFile(SourceFile):
+    pass
+
+
+class AsmFile(SourceFile):
+    pass
 
 
 class CCode(CompileUnit):
@@ -337,12 +362,13 @@ class TCC:
         self.sys_include_dirs = list(sys_include_dirs)
         self.library_dirs = list(library_dirs)
 
-    def _build(self, bin:InMemBinary, link_units:List[LinkUnit]):
+    def _build(self, bin:InMemBinary, link_units:List[LinkUnit],
+               additional_options=None):
         for incl_path in self.include_dirs:
             tcc_add_include_path(bin.tcc_state, c_str(incl_path))
         for sys_incl_path in self.sys_include_dirs:
             tcc_add_sysinclude_path(bin.tcc_state, c_str(sys_incl_path))
-        for option in self.options:
+        for option in self.options + (additional_options or []):
             tcc_set_options(bin.tcc_state, c_str(option))
         for def_name, def_val in self.defines.items():
             bin.define(def_name, def_val, is_global=True)
@@ -379,3 +405,13 @@ class TCC:
             mem_bin.error(f'Failed to write dynamic library to '
                           f'{lib_bin.filename}')
         return lib_bin
+
+    def build_to_arch(self, filename:os.PathLike,
+                      *link_units:List[Union[LinkUnit, str]]) -> ArchBinary:
+        mem_bin = InMemBinary(TCC_OUTPUT_OBJ)
+        self._build(mem_bin, link_units, ['-ar'])
+        arch_bin = ArchBinary(filename, mem_bin._warnings, False)
+        if tcc_output_file(mem_bin.tcc_state, c_str(str(arch_bin.filename)))!=0:
+            mem_bin.error(f'Failed to write archive file to '
+                          f'{arch_bin.filename}')
+        return arch_bin

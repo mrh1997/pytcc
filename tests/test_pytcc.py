@@ -208,6 +208,16 @@ class TestTcc:
                                       auto_add_suffix=False)
         assert exe_binary.filename.suffix == ''
 
+    def test_buildToArch_createsArchiveFile(self, tcc, tmp_path):
+        arch_filename = tmp_path / 'library.a'
+        exe_filename = tmp_path / 'main.exe'
+        link_unit0 = pytcc.CCode('int func() { return 123; }')
+        link_unit1 = pytcc.CCode('int func(); int main() { return func(); }')
+        arch_tcc = pytcc.TCC()
+        arch_binary = arch_tcc.build_to_arch(arch_filename, link_unit0)
+        exe_binary = tcc.build_to_exe(exe_filename, link_unit1, arch_binary)
+        assert subprocess.call(str(exe_filename)) == 123
+
 
 class TestInMemBinary:
 
