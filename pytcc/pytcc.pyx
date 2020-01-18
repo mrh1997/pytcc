@@ -6,6 +6,9 @@ import platform
 import sys
 
 
+TCC_LIB_PATH = Path(sys.prefix) / 'tcc-rtlib'
+
+
 DEF TCC_OUTPUT_MEMORY =      1 # output will be run in memory (default)
 DEF TCC_OUTPUT_EXE =         2 # executable file
 DEF TCC_OUTPUT_DLL =         3 # dynamic library
@@ -118,7 +121,7 @@ cdef class InMemBinary:
         self.tcc_state = tcc_new()
         if self.tcc_state == NULL:
             raise MemoryError('Out of memory')
-        tcc_set_lib_path(self.tcc_state, b'D:\\PyTCC\\tinycc\\win32')
+        tcc_set_lib_path(self.tcc_state, os.fsencode(TCC_LIB_PATH))
         tcc_set_output_type(self.tcc_state, output)
         tcc_set_error_func(self.tcc_state, <void*>self, compile_error_func)
 

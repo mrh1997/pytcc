@@ -1,2 +1,2 @@
-include  tinycc/VERSION  tinycc/*.c  tinycc/*.h  tinycc/stab.def
-include  pytcc/*.c  pytcc/*.h  pytcc/*.py  pytcc/*.pyx
+include  tinycc/VERSION  tinycc/*.h  tinycc/stab.def
+include  cmake-build-msvc-2015-32bit/libtcc.lib
