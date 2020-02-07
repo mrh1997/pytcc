@@ -1,2 +1,2 @@
-include  tinycc/VERSION  tinycc/*.h  tinycc/stab.def
+include  tinycc/VERSION  tinycc/libtcc.h
 include  cmake-build-msvc-2015-32bit/libtcc.lib

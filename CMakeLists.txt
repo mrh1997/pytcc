@@ -1,8 +1,13 @@
 # This file works currently only with win32!!!!
 # To make this file work a python environemnt has to be setup via "tox" first
 
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.15)
 project (PyTCC C)
+
+
+# to find correct python interpreter run cmake when venv is activated or
+# VIRTUAL_ENV environment var is set to path of venv
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 
 
 set(TCC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tinycc)
@@ -14,7 +19,12 @@ set(RTLIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/rtlib)
 
 file(READ ${TCC_DIR}/VERSION TCC_VERSION)
 string(STRIP ${TCC_VERSION} TCC_VERSION)
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/config.h "/*dummy config file*/")
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/tcc-config/config.h "\
+    #define ONE_SOURCE 0 \n\
+    #define TCC_TARGET_I386 \n\
+    #define TCC_TARGET_PE \n\
+    #define TCC_VERSION \"${TCC_VERSION}\" \n\
+    #define TCC_LIBTCC1 \"libtcc1-32.a\" \n")
 add_library(libtcc STATIC
     ${TCC_DIR}/libtcc.c
     ${TCC_DIR}/tccpp.c
@@ -27,20 +37,15 @@ add_library(libtcc STATIC
     ${TCC_DIR}/i386-link.c
     ${TCC_DIR}/i386-asm.c)
 target_include_directories(libtcc
-    PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
-target_compile_definitions(libtcc
-    PUBLIC ONE_SOURCE=0
-    PUBLIC TCC_TARGET_I386=
-    PUBLIC TCC_TARGET_PE=
-    PUBLIC TCC_VERSION="${TCC_VERSION}"
-    PUBLIC TCC_LIBTCC1=\"libtcc1-32.a\")
+    PUBLIC ${TCC_DIR}
+    PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/tcc-config)
 
 
 ################################################################################
 # TCC compiler as executable
 
 add_executable(tcc ${TCC_DIR}/tcc.c)
-target_link_libraries(tcc PUBLIC libtcc)
+target_link_libraries(tcc PRIVATE libtcc)
 
 
 ################################################################################
@@ -58,12 +63,15 @@ set(RTLIB_SRCFILES
     ${TCC_DIR}/lib/bcheck.c
     ${TCC_DIR}/lib/alloca86.S
     ${TCC_DIR}/lib/alloca86-bt.S)
+
+# compile C files to object files
 file(MAKE_DIRECTORY ${RTLIB_DIR})
 foreach(RTLIB_SRCFILE ${RTLIB_SRCFILES})
     get_filename_component(RTLIB_SRCFILE_NOEXT ${RTLIB_SRCFILE} NAME_WE)
     add_custom_command(
         OUTPUT ${RTLIB_DIR}/${RTLIB_SRCFILE_NOEXT}.o
         COMMAND tcc -c
+                    -I${TCC_DIR}/include
                     -I${TCC_DIR}/win32/include
                     -I${TCC_DIR}/win32/include/winapi
                     -o ${RTLIB_DIR}/${RTLIB_SRCFILE_NOEXT}.o
@@ -72,42 +80,34 @@ foreach(RTLIB_SRCFILE ${RTLIB_SRCFILES})
         COMMENT "Compiling Runtime Library (${RTLIB_SRCFILE})")
     list(APPEND RTLIB_OBJFILES ${RTLIB_DIR}/${RTLIB_SRCFILE_NOEXT}.o)
 endforeach()
-add_custom_command(
-    OUTPUT ${RTLIB_DIR}/libtcc1-32.a
-    COMMAND tcc -ar ${RTLIB_DIR}/libtcc1-32.a ${RTLIB_OBJFILES}
-    DEPENDS ${RTLIB_OBJFILES}
-    COMMENT "Linking Runtime Library")
+
+# link all objects files to archive file
 add_custom_target(
     runtime-lib
-    ALL DEPENDS ${RTLIB_DIR}/libtcc1-32.a
+    tcc -ar ${RTLIB_DIR}/libtcc1-32.a ${RTLIB_OBJFILES}
+    DEPENDS ${RTLIB_OBJFILES}
+    BYPRODUCTS ${RTLIB_DIR}/libtcc1-32.a
+    COMMENT "Linking Runtime Library"
     SOURCES ${RTLIB_SRCFILES})
 
 
 ################################################################################
-# pytcc extension
+# pytcc extension for debugging C code by running:
+#  - Executable: ${Python3_EXECUTABLE}
+#  - Parameters: -m pytest <testname>  (like "test_pytcc.py::TestTcc::test_...")
+#  - Environment: PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}
 
-set(PYTHON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/.tox/py36)
-execute_process(
-    COMMAND ${PYTHON_DIR}/Scripts/python -c
-                        "import sys; print(sys.real_prefix, end='')"
-    OUTPUT_VARIABLE REAL_PYTHON_DIR)
-
+# Cython Preprocessor Run
 add_custom_command(
     OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/pytcc/pytcc.c
     MAIN_DEPENDENCY pytcc/pytcc.pyx
-    COMMAND ${PYTHON_DIR}/Scripts/cython -3
+    COMMAND ${Python3_EXECUTABLE} -m cython -3
                         ${CMAKE_CURRENT_SOURCE_DIR}/pytcc/pytcc.pyx)
 
-add_library(pytcc SHARED pytcc/pytcc.c)
-target_include_directories(pytcc
-    PUBLIC ${REAL_PYTHON_DIR}/include
-    PRIVATE ${TCC_DIR})
-target_link_directories(pytcc
-    PUBLIC ${REAL_PYTHON_DIR}/libs)
-target_link_libraries(pytcc
-    PUBLIC python36
-    PRIVATE libtcc)
-set_target_properties(pytcc PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${PYTHON_DIR}/Lib/site-packages
-    PREFIX ""
-    SUFFIX ".cp36-win32.pyd")
+# Compile Python Extension
+Python3_add_library(pytcc MODULE pytcc/pytcc.c)
+target_link_libraries(pytcc PRIVATE libtcc)
+#set_target_properties(pytcc PROPERTIES
+#    RUNTIME_OUTPUT_DIRECTORY ${PYTHON_DIR}/Lib/site-packages
+#    PREFIX ""
+#    SUFFIX ".cp36-win32.pyd")
