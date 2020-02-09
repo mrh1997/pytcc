@@ -10,10 +10,10 @@ libraries, but also running the generated code in the addressspace
 of the current process without the need of creating a new file.
 
 Current status:
- * Compiles on Windows with Visual Studio
+ * Supports 32bit Python on Windows
+ * Provide tcclib API in Python
 
 Roadmap:
- * Provide tcclib API in Python
- * Create Wheels
- * Make it Crossplatform
+*  Create Wheels for all platforms
+*  MAYBE: Make it Crossplatform
  * MAYBE: Extend TCC (and PyTCC) to provide access to AST

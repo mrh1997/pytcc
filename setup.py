@@ -1,3 +1,5 @@
+#!python3.6
+# -*- coding: utf-8 -*-
 import os
 from distutils.core import setup
 from distutils.extension import Extension
@@ -10,6 +12,7 @@ except ImportError:
 # This environment variable has to point to the build directory of cmake:
 TCC_BUILD_DIR = Path(os.environ['TCC_BUILD_DIR'])
 TINYCC_DIR = Path('tinycc')
+TCC_VERSION = (TINYCC_DIR / 'VERSION').read_text().strip()
 RTLIB_DEST_DIR = Path('tcc-rtlib')
 
 def collect_files(src_path, dest_path, glob):
@@ -20,6 +23,27 @@ def collect_files(src_path, dest_path, glob):
 
 setup(
     name='PyTCC',
+    version=TCC_VERSION,
+    description='A Python Wrapper for the API of the Tiny C Compiler (TCC)',
+    long_description=Path('README.md').read_text(),
+    long_description_content_type='text/markdown',
+    author='Robert Hölzl',
+    author_email='robert.hoelzl@posteo.de',
+    url='https://github.com/mrh1997/PyTCC',
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Operating System :: Microsoft :: Windows',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: C',
+        'Topic :: Software Development :: Assemblers',
+        'Topic :: Software Development :: Compilers',
+    ],
     ext_modules = cythonize(
         [Extension(
             "pytcc",
