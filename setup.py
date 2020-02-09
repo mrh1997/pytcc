@@ -13,6 +13,7 @@ except ImportError:
 TCC_BUILD_DIR = Path(os.environ['TCC_BUILD_DIR'])
 TINYCC_DIR = Path('tinycc')
 TCC_VERSION = (TINYCC_DIR / 'VERSION').read_text().strip()
+PYTCC_VERSION =Path('PYTCC_VERSION').read_text().format(TCC_VERSION=TCC_VERSION)
 RTLIB_DEST_DIR = Path('tcc-rtlib')
 
 def collect_files(src_path, dest_path, glob):
@@ -23,7 +24,7 @@ def collect_files(src_path, dest_path, glob):
 
 setup(
     name='PyTCC',
-    version=TCC_VERSION,
+    version=PYTCC_VERSION,
     description='A Python Wrapper for the API of the Tiny C Compiler (TCC)',
     long_description=Path('README.md').read_text(),
     long_description_content_type='text/markdown',

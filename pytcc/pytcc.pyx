@@ -4,6 +4,7 @@ from pathlib import Path
 import os
 import platform
 import sys
+import pkg_resources
 
 
 TCC_LIB_PATH = Path(sys.prefix) / 'tcc-rtlib'
@@ -42,6 +43,9 @@ cdef extern from "libtcc.h":
     cdef void *tcc_get_symbol(TCCState *s, const char *name)
     cdef void tcc_list_symbols(TCCState *s, void *ctx,
         void (*symbol_cb)(void *ctx, const char *name, const void *val))
+
+
+__version__ = pkg_resources.get_distribution('PyTCC').version
 
 
 def c_str(s:str) -> bytes:

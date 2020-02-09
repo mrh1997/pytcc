@@ -4,12 +4,17 @@ import ctypes as ct
 import subprocess
 import platform
 import os
+import re
 from pathlib import Path
 
 
 @pytest.fixture
 def tcc():
     return pytcc.TCC()
+
+
+def test_version_isAValidVersionId():
+    assert re.match(r'\d+\.\d+\.\d+\.\d+', pytcc.__version__)
 
 
 class TestCompileError:
