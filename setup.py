@@ -12,10 +12,10 @@ TCC_BUILD_DIR = Path(os.environ['TCC_BUILD_DIR'])
 TINYCC_DIR = Path('tinycc')
 RTLIB_DEST_DIR = Path('tcc-rtlib')
 
-def collect_includes(src_path, dest_path):
+def collect_files(src_path, dest_path, glob):
     for src_incl_dir in Path(src_path).glob('**/'):
         dest_incl_dir = dest_path / src_incl_dir.relative_to(src_path)
-        src_incl_files = src_incl_dir.glob('*.h')
+        src_incl_files = src_incl_dir.glob(glob)
         yield str(dest_incl_dir), list(map(str, src_incl_files))
 
 setup(
@@ -30,8 +30,8 @@ setup(
         compiler_directives=dict(
             language_level=3)),
     data_files=[
-        (str(RTLIB_DEST_DIR/'lib'), [str(TCC_BUILD_DIR/'rtlib/libtcc1-32.a')])]+
-        list(collect_includes(TINYCC_DIR/'include', RTLIB_DEST_DIR/'include')) +
-        list(collect_includes(TINYCC_DIR/'win32/include',
-                              RTLIB_DEST_DIR/'include/win32'))
+        (str(RTLIB_DEST_DIR/'lib'), [str(TCC_BUILD_DIR/'rtlib/libtcc1-32.a')])] +
+        list(collect_files(TINYCC_DIR / 'win32/lib', RTLIB_DEST_DIR / 'lib', '*.def')) +
+        list(collect_files(TINYCC_DIR / 'include', RTLIB_DEST_DIR / 'include', '*.h')) +
+        list(collect_files(TINYCC_DIR / 'win32/include', RTLIB_DEST_DIR /'include/win32', '*.h'))
 )
