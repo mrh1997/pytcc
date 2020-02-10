@@ -2,7 +2,7 @@
 # To make this file work a python environemnt has to be setup via "tox" first
 
 cmake_minimum_required(VERSION 3.15)
-project (PyTCC C)
+project (pytcc C)
 
 
 # to find correct python interpreter run cmake when venv is activated or
@@ -99,15 +99,11 @@ add_custom_target(
 
 # Cython Preprocessor Run
 add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/pytcc/pytcc.c
-    MAIN_DEPENDENCY pytcc/pytcc.pyx
+    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/pytcc.c
+    MAIN_DEPENDENCY pytcc.pyx
     COMMAND ${Python3_EXECUTABLE} -m cython -3
-                        ${CMAKE_CURRENT_SOURCE_DIR}/pytcc/pytcc.pyx)
+                        ${CMAKE_CURRENT_SOURCE_DIR}/pytcc.pyx)
 
 # Compile Python Extension
-Python3_add_library(pytcc MODULE pytcc/pytcc.c)
+Python3_add_library(pytcc MODULE pytcc.c)
 target_link_libraries(pytcc PRIVATE libtcc)
-#set_target_properties(pytcc PROPERTIES
-#    RUNTIME_OUTPUT_DIRECTORY ${PYTHON_DIR}/Lib/site-packages
-#    PREFIX ""
-#    SUFFIX ".cp36-win32.pyd")

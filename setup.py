@@ -23,14 +23,14 @@ def collect_files(src_path, dest_path, glob):
         yield str(dest_incl_dir), list(map(str, src_incl_files))
 
 setup(
-    name='PyTCC',
+    name='pytcc',
     version=PYTCC_VERSION,
     description='A Python Wrapper for the API of the Tiny C Compiler (TCC)',
     long_description=Path('README.md').read_text(),
     long_description_content_type='text/markdown',
     author='Robert Hölzl',
     author_email='robert.hoelzl@posteo.de',
-    url='https://github.com/mrh1997/PyTCC',
+    url='https://github.com/mrh1997/pytcc',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Operating System :: Microsoft :: Windows',
@@ -48,7 +48,7 @@ setup(
     ext_modules = cythonize(
         [Extension(
             "pytcc",
-            sources=["pytcc/pytcc.pyx"],
+            sources=["pytcc.pyx"],
             libraries=['libtcc'],
             library_dirs=[str(TCC_BUILD_DIR)],
             include_dirs=[str(TINYCC_DIR)])],

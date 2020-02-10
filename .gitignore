@@ -5,6 +5,9 @@ __pycache__
 /.pytest_cache
 /.tox
 
+# cython
+/pytcc.c
+
 # setup.py
 /PyTCC.egg-info
 /MANIFEST
