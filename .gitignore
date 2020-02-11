@@ -16,4 +16,8 @@ __pycache__
 
 # CLion
 /.idea
+/cmake-build-*
+
+# CMake
 /cmake-*
+/tinycc-bin

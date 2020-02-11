@@ -2,4 +2,4 @@ include  README.md
 include  PYTCC_VERSION
 include  tinycc/VERSION
 include  tinycc/libtcc.h
-include  cmake-build-msvc-2015-32bit/libtcc.lib
+include  tinycc-bin/win32/libtcc.lib

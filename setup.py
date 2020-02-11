@@ -9,8 +9,10 @@ try:
 except ImportError:
     def cythonize(ext, **argv): return ext
 
-# This environment variable has to point to the build directory of cmake:
-TCC_BUILD_DIR = Path(os.environ['TCC_BUILD_DIR'])
+# TCC_BUILD_DIR can be used to link against alternative TCC library build.
+# Please note that this path has to be absolute (or MANIFEST.in had
+# to be adapted)
+TCC_BUILD_DIR = Path(os.environ.get('TCC_BUILD_DIR','tinycc-bin/win32'))
 TINYCC_DIR = Path('tinycc')
 TCC_VERSION = (TINYCC_DIR / 'VERSION').read_text().strip()
 PYTCC_VERSION =Path('PYTCC_VERSION').read_text().format(TCC_VERSION=TCC_VERSION)

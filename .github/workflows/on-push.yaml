@@ -1,0 +1,28 @@
+name: Build pytcc and run unittests
+on: [push]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v1.2.0
+        with:
+          submodules: true
+
+      - name: Build static libtcc and runtime library
+        run: |
+          cmake -A Win32 -B tinycc-bin\win32
+          cmake --build tinycc-bin\win32 --config Release
+
+      - name: Build Wheel
+        run: |
+          py -3.6-32 -m pip wheel -w wheels .
+
+      - name: Run Unittests
+        run: |
+          py -3.6-32 -m venv venv
+          venv\Scripts\activate
+          pip install -f wheels pytcc pytest
+          pytest

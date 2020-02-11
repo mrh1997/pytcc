@@ -7,7 +7,7 @@ project (pytcc C)
 
 # to find correct python interpreter run cmake when venv is activated or
 # VIRTUAL_ENV environment var is set to path of venv
-find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+find_package(Python3 COMPONENTS Interpreter Development)
 
 
 set(TCC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tinycc)
@@ -39,6 +39,12 @@ add_library(libtcc STATIC
 target_include_directories(libtcc
     PUBLIC ${TCC_DIR}
     PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/tcc-config)
+set_target_properties(libtcc PROPERTIES
+    PREFIX ""
+    ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}"
+    ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}"
+    ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}"
+    ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}")
 
 
 ################################################################################
@@ -83,7 +89,7 @@ endforeach()
 
 # link all objects files to archive file
 add_custom_target(
-    runtime-lib
+    runtime-lib ALL
     tcc -ar ${RTLIB_DIR}/libtcc1-32.a ${RTLIB_OBJFILES}
     DEPENDS ${RTLIB_OBJFILES}
     BYPRODUCTS ${RTLIB_DIR}/libtcc1-32.a
@@ -105,5 +111,5 @@ add_custom_command(
                         ${CMAKE_CURRENT_SOURCE_DIR}/pytcc.pyx)
 
 # Compile Python Extension
-Python3_add_library(pytcc MODULE pytcc.c)
+Python3_add_library(pytcc MODULE EXCLUDE_FROM_ALL pytcc.c)
 target_link_libraries(pytcc PRIVATE libtcc)
