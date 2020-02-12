@@ -98,10 +98,7 @@ add_custom_target(
 
 
 ################################################################################
-# pytcc extension for debugging C code by running:
-#  - Executable: ${Python3_EXECUTABLE}
-#  - Parameters: -m pytest <testname>  (like "test_pytcc.py::TestTcc::test_...")
-#  - Environment: PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}
+# pytcc extension for debugging C code
 
 # Cython Preprocessor Run
 add_custom_command(
