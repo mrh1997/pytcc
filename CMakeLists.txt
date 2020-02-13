@@ -102,11 +102,13 @@ add_custom_target(
 
 # Cython Preprocessor Run
 add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/pytcc.c
-    MAIN_DEPENDENCY pytcc.pyx
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/pytcc.c
+    MAIN_DEPENDENCY src/pytcc.pyx
     COMMAND ${Python3_EXECUTABLE} -m cython -3
-                        ${CMAKE_CURRENT_SOURCE_DIR}/pytcc.pyx)
+                        ${CMAKE_CURRENT_SOURCE_DIR}/src/pytcc.pyx)
 
 # Compile Python Extension
-Python3_add_library(pytcc MODULE EXCLUDE_FROM_ALL pytcc.c)
-target_link_libraries(pytcc PRIVATE libtcc)
+Python3_add_library(pytcc MODULE EXCLUDE_FROM_ALL
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/pytcc.c)
+target_link_libraries(pytcc PRIVATE
+    libtcc)

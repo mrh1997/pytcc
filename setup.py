@@ -50,7 +50,7 @@ setup(
     ext_modules = cythonize(
         [Extension(
             "pytcc",
-            sources=["pytcc.pyx"],
+            sources=["src/pytcc.pyx"],
             libraries=['libtcc'],
             library_dirs=[str(TCC_BUILD_DIR)],
             include_dirs=[str(TINYCC_DIR)])],

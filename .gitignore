@@ -6,7 +6,7 @@ __pycache__
 /.tox
 
 # cython
-/pytcc.c
+/src/pytcc.c
 
 # setup.py
 /PyTCC.egg-info
