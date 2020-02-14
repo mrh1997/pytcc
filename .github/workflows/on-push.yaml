@@ -3,6 +3,11 @@ on: [push]
 
 jobs:
   build:
+
+    strategy:
+      matrix:
+        architecture: [32, 64]
+
     runs-on: windows-latest
     steps:
 
@@ -11,18 +16,27 @@ jobs:
         with:
           submodules: true
 
-      - name: Build static libtcc and runtime library
+      - name: Build 32bit static libtcc and runtime library Projectfile
+        if: matrix.architecture == 32
         run: |
           cmake -A Win32 -B tinycc-bin\win32
-          cmake --build tinycc-bin\win32 --config Release
+
+      - name: Build 64bit static libtcc and runtime library Projectfile
+        if: matrix.architecture == 64
+        run: |
+          cmake -A x64 -B tinycc-bin\win64
+
+      - name: Build static libtcc and runtime library Binary
+        run: |
+          cmake --build tinycc-bin\win${{ matrix.architecture }} --config Release
 
       - name: Build Wheel
         run: |
-          py -3.6-32 -m pip wheel -w wheels .
+          py -3.6-${{ matrix.architecture }} -m pip wheel -w wheels .
 
       - name: Run Unittests
         run: |
-          py -3.6-32 -m venv venv
+          py -3.6-${{ matrix.architecture }} -m venv venv
           venv\Scripts\activate
           pip install -f wheels pytcc pytest
           pytest

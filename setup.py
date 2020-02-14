@@ -4,15 +4,18 @@ import os
 from distutils.core import setup
 from distutils.extension import Extension
 from pathlib import Path
+import platform
 try:
     from Cython.Build import cythonize
 except ImportError:
     def cythonize(ext, **argv): return ext
 
+ARCHITECTURE = int(platform.architecture()[0][:2])
 # TCC_BUILD_DIR can be used to link against alternative TCC library build.
 # Please note that this path has to be absolute (or MANIFEST.in had
 # to be adapted)
-TCC_BUILD_DIR = Path(os.environ.get('TCC_BUILD_DIR','tinycc-bin/win32'))
+TCC_BUILD_DIR = Path(os.environ.get('TCC_BUILD_DIR',
+                                    f'tinycc-bin/win{ARCHITECTURE}'))
 TINYCC_DIR = Path('tinycc')
 TCC_VERSION = (TINYCC_DIR / 'VERSION').read_text().strip()
 PYTCC_VERSION =Path('PYTCC_VERSION').read_text().format(TCC_VERSION=TCC_VERSION)
@@ -57,7 +60,7 @@ setup(
         compiler_directives=dict(
             language_level=3)),
     data_files=[
-        (str(RTLIB_DEST_DIR/'lib'), [str(TCC_BUILD_DIR/'rtlib/libtcc1-32.a')])] +
+        (str(RTLIB_DEST_DIR/'lib'), [str(TCC_BUILD_DIR / f'rtlib/libtcc1-{ARCHITECTURE}.a')])] +
         list(collect_files(TINYCC_DIR / 'win32/lib', RTLIB_DEST_DIR / 'lib', '*.def')) +
         list(collect_files(TINYCC_DIR / 'include', RTLIB_DEST_DIR / 'include', '*.h')) +
         list(collect_files(TINYCC_DIR / 'win32/include', RTLIB_DEST_DIR /'include/win32', '*.h'))
