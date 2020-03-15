@@ -11,7 +11,7 @@ of the current process without the need of creating a new file.
 
 Current status:
 * Supports 32bit Python on Windows
-* Provide tcclib API in Pytho
+* Provide tcclib API in Python
 
 Roadmap:
 * Create Wheels for all platforms
@@ -29,19 +29,27 @@ required as prerequisites:
 
 First of all you have to build the TCC binaries by running cmake to
 create your platform specific project files and then build your project
-files.
+files. In a second step you build the python C-extension via setup.py
 
-To build and test pytcc there are two options (depends on your use
-case):
-1. build and run the cmake target "pytcc" (see CMakeLists.txt). Requires
-   to be tested by the following executable invocation: ```python.exe -m
-   pytest <testname>```, where "testname" looks like
-   ```test_pytcc.py::TestTcc::test_...```. To ensure that your pytcc
-   module is found set the environment variable ```PYTHONPATH``` to the
-   build directory (i.e. ```tinycc-bin/win32```).
-2. run "tox". If The build was not done in the ```tinycc-bin```
-   subdirectory please set ```TCC_BUILD_DIR``` to the build directory!
+```
+>> cmake -A x64 -B tinycc-bin\win64
+>> cmake --build tinycc-bin\win64 --config Release
+>> tox
+```
 
-The first variant is preferrably used to debbug your C code with a C
-debugger, while the second one is preferrably used to debug your
-python code.
+If you build on linux or mac replace "win64" by "linux64" or "mac64";
+To build on 32bit architecture replace "win64" by "win32" and "x64" by "Win32".
+
+Alternatively you could choose any directory as output for the TCC binary and
+set the environment variable ``TCC_BUILD_DIR`` to the corresponding directory.
+
+
+# Howto debug
+
+To debug pytcc it is recommended to run cmake when the python environment
+that shall be used for the tests is activated (i.e. after running tox you
+could manually do this via ``.tox/py36/Scripts/activate``).
+Cmake will then create a additional target: "pytcc".
+This one can be used for creating the C extention without setup.py.
+As cmake is supported by most C IDEs you can use the resulting project file
+to debug the project.

@@ -80,26 +80,28 @@ target_link_libraries(tcc PRIVATE libtcc)
 ################################################################################
 # Runtime Library (libtcc1-xx.a)
 
+set(RTLIB_SRCFILES
+    ${TCC_DIR}/lib/libtcc1.c
+    ${TCC_DIR}/lib/bcheck.c)
 if (${TARGET_ARCHITECTURE} EQUAL 32)
-    set(HEAPMGR_SRCS
+    list (APPEND RTLIB_SRCFILES
         ${TCC_DIR}/lib/alloca86.S
         ${TCC_DIR}/lib/alloca86-bt.S)
-else()
-    set(HEAPMGR_SRCS
+elseif (${TARGET_ARCHITECTURE} EQUAL 64)
+    list (APPEND RTLIB_SRCFILES
         ${TCC_DIR}/lib/alloca86_64.S
         ${TCC_DIR}/lib/alloca86_64-bt.S)
 endif()
-set(RTLIB_SRCFILES
-    ${TCC_DIR}/lib/libtcc1.c
-    ${TCC_DIR}/win32/lib/crt1.c
-    ${TCC_DIR}/win32/lib/crt1w.c
-    ${TCC_DIR}/win32/lib/wincrt1.c
-    ${TCC_DIR}/win32/lib/wincrt1w.c
-    ${TCC_DIR}/win32/lib/dllcrt1.c
-    ${TCC_DIR}/win32/lib/dllmain.c
-    ${TCC_DIR}/win32/lib/chkstk.S
-    ${TCC_DIR}/lib/bcheck.c
-    ${HEAPMGR_SRCS})
+if (WIN32)
+    list (APPEND RTLIB_SRCFILES
+        ${TCC_DIR}/win32/lib/crt1.c
+        ${TCC_DIR}/win32/lib/crt1w.c
+        ${TCC_DIR}/win32/lib/wincrt1.c
+        ${TCC_DIR}/win32/lib/wincrt1w.c
+        ${TCC_DIR}/win32/lib/dllcrt1.c
+        ${TCC_DIR}/win32/lib/dllmain.c
+        ${TCC_DIR}/win32/lib/chkstk.S)
+endif()
 
 # compile C files to object files
 file(MAKE_DIRECTORY ${RTLIB_DIR})
