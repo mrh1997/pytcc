@@ -8,6 +8,8 @@ import pkg_resources
 
 
 TCC_LIB_PATH = Path(sys.prefix) / 'tcc-rtlib'
+if platform.system() != 'Windows':
+    TCC_LIB_PATH /= 'lib'
 
 
 DEF TCC_OUTPUT_MEMORY =      1 # output will be run in memory (default)

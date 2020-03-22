@@ -21,3 +21,5 @@ __pycache__
 # CMake
 /cmake-*
 /tinycc-bin
+
+/.vagrant

@@ -1,6 +1,3 @@
-# This file works currently only with win32!!!!
-# To make this file work a python environemnt has to be setup via "tox" first
-
 cmake_minimum_required(VERSION 3.15)
 project (pytcc C)
 
@@ -8,6 +5,8 @@ project (pytcc C)
 # to find correct python interpreter run cmake when venv is activated or
 # VIRTUAL_ENV environment var is set to path of venv
 find_package(Python3 COMPONENTS Interpreter Development)
+
+find_package (Threads)
 
 
 set(TCC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tinycc)
@@ -33,12 +32,6 @@ endif()
 ################################################################################
 # TCC compiler as library
 
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/tcc-config/config.h "\
-    #define ONE_SOURCE 0 \n\
-    #define TCC_TARGET_${TARGET_ARCHITECTURE_NAME} \n\
-    #define TCC_TARGET_PE \n\
-    #define TCC_VERSION \"${TCC_VERSION}\" \n\
-    #define TCC_LIBTCC1 \"libtcc1-${TARGET_ARCHITECTURE}.a\" \n")
 if (${TARGET_ARCHITECTURE} EQUAL 32)
     set(CODE_GENERATOR_SRCS
         ${TCC_DIR}/i386-gen.c
@@ -50,6 +43,22 @@ else()
         ${TCC_DIR}/x86_64-link.c
         ${TCC_DIR}/i386-asm.c)
 endif()
+set (GLOBAL_DEFINES  "\
+    #define ONE_SOURCE 0 \n\
+    #define TCC_TARGET_${TARGET_ARCHITECTURE_NAME} \n\
+    #define TCC_VERSION \"${TCC_VERSION}\" \n\
+    #define TCC_LIBTCC1 \"libtcc1-${TARGET_ARCHITECTURE}.a\" \n\
+    #define CONFIG_TCCDIR  \".\"  \n")
+if (WIN32)
+    list (APPEND CODE_GENERATOR_SRCS   ${TCC_DIR}/tccpe.c)
+    string (APPEND GLOBAL_DEFINES
+            "    #define TCC_TARGET_PE\n")
+elseif (UNIX)
+    string (APPEND GLOBAL_DEFINES
+            "    #define CONFIG_USE_LIBGCC\n"
+            "    #define CONFIG_TRIPLET  \"x86_64-linux-gnu\" \n")
+endif()
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/tcc-config/config.h   ${GLOBAL_DEFINES})
 add_library(libtcc STATIC
     ${TCC_DIR}/libtcc.c
     ${TCC_DIR}/tccpp.c
@@ -57,13 +66,17 @@ add_library(libtcc STATIC
     ${TCC_DIR}/tccelf.c
     ${TCC_DIR}/tccasm.c
     ${TCC_DIR}/tccrun.c
-    ${TCC_DIR}/tccpe.c
     ${CODE_GENERATOR_SRCS})
+if(NOT WIN32)
+    target_link_libraries(libtcc PRIVATE
+        dl ${CMAKE_THREAD_LIBS_INIT})
+endif()
 target_include_directories(libtcc
     PUBLIC ${TCC_DIR}
     PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/tcc-config)
 set_target_properties(libtcc PROPERTIES
     PREFIX ""
+    POSITION_INDEPENDENT_CODE ON
     ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}"
     ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}"
     ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}"
@@ -92,6 +105,7 @@ elseif (${TARGET_ARCHITECTURE} EQUAL 64)
         ${TCC_DIR}/lib/alloca86_64.S
         ${TCC_DIR}/lib/alloca86_64-bt.S)
 endif()
+set (TCC_INCLUDE_DIRS -I${TCC_DIR}/include)
 if (WIN32)
     list (APPEND RTLIB_SRCFILES
         ${TCC_DIR}/win32/lib/crt1.c
@@ -101,6 +115,8 @@ if (WIN32)
         ${TCC_DIR}/win32/lib/dllcrt1.c
         ${TCC_DIR}/win32/lib/dllmain.c
         ${TCC_DIR}/win32/lib/chkstk.S)
+    list (APPEND TCC_INCLUDE_DIRS
+            -I${TCC_DIR}/win32/include -I${TCC_DIR}/win32/include/winapi)
 endif()
 
 # compile C files to object files
@@ -109,13 +125,12 @@ foreach(RTLIB_SRCFILE ${RTLIB_SRCFILES})
     get_filename_component(RTLIB_SRCFILE_NOEXT ${RTLIB_SRCFILE} NAME_WE)
     add_custom_command(
         OUTPUT ${RTLIB_DIR}/${RTLIB_SRCFILE_NOEXT}.o
-        COMMAND tcc -c
-                    -I${TCC_DIR}/include
-                    -I${TCC_DIR}/win32/include
-                    -I${TCC_DIR}/win32/include/winapi
+        COMMAND tcc ${TCC_INCLUDE_DIRS}
+                    -L ${RTLIB_DIR}
+                    -c ${RTLIB_SRCFILE}
                     -o ${RTLIB_DIR}/${RTLIB_SRCFILE_NOEXT}.o
-                    ${RTLIB_SRCFILE}
         MAIN_DEPENDENCY ${RTLIB_SRCFILE}
+        VERBATIM
         COMMENT "Compiling Runtime Library (${RTLIB_SRCFILE})")
     list(APPEND RTLIB_OBJFILES ${RTLIB_DIR}/${RTLIB_SRCFILE_NOEXT}.o)
 endforeach()
@@ -139,9 +154,10 @@ execute_process(
 if (${Cython_TEST_ERRCODE} EQUAL 0)
     # Cython Preprocessor Run
     add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/pytcc.c
-        MAIN_DEPENDENCY src/pytcc.pyx
-        COMMAND ${Python3_EXECUTABLE} -m cython -3 src/pytcc.pyx)
+        MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/src/pytcc.pyx
+        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/pytcc.c
+        COMMAND ${Python3_EXECUTABLE} -m cython -3
+                       ${CMAKE_CURRENT_SOURCE_DIR}/src/pytcc.pyx)
 
     # Compile Python Extension
     Python3_add_library(pytcc MODULE EXCLUDE_FROM_ALL

@@ -8,6 +8,10 @@ import re
 from pathlib import Path
 
 
+LIB_SUFFIX = pytcc.LibBinary.DEFAULT_SUFFIXES[platform.system()]
+EXE_SUFFIX = pytcc.ExeBinary.DEFAULT_SUFFIXES[platform.system()]
+
+
 @pytest.fixture
 def tcc():
     return pytcc.TCC()
@@ -54,8 +58,19 @@ class TestTcc:
         assert tcc.sys_include_dirs == ['sys_incl_dir']
         assert tcc.library_dirs == ['lib_dir']
 
-    def test_buildToMem_onCCode_executesMain(self, tcc):
+    def test_buildToMem_onCompileError_passesErrorInCompileErrorExc(self, tcc):
+        link_unit = pytcc.CCode("#error ERRORMSG")
+        with pytest.raises(pytcc.CompileError, match="ERRORMSG"):
+            tcc.build_to_mem(link_unit)
+
+    @pytest.mark.skip
+    def test_buildToMem_onLinkError_passesErrorInCompileErrorExc(self, tcc):
+        with pytest.raises(pytcc.CompileError):
+            self.run(tcc, pytcc.CCode('int x(void); int main() { x(); }'))
+
+    def test_buildToMem_onValidCCode_executesMain(self, tcc):
         link_unit = pytcc.CCode("int main(void) { return(123456); }")
+        self.run(tcc, link_unit)
         assert self.run(tcc, link_unit) == 123456
 
     def test_buildToMem_onCFile_loadsFile(self, tcc, tmpdir):
@@ -130,11 +145,6 @@ class TestTcc:
         with pytest.raises(pytcc.CompileError):
             tcc.build_to_mem(link_unit)
 
-    def test_buildToMem_onError_passesErrorInCompileErrorExc(self, tcc):
-        link_unit = pytcc.CCode("#error ERRORMSG")
-        with pytest.raises(pytcc.CompileError, match="ERRORMSG"):
-            tcc.build_to_mem(link_unit)
-
     def test_buildToMem_returnsOpenedBinaryWithNoWarnings(self, tcc):
         binary = tcc.build_to_mem(pytcc.CCode('int var;'))
         assert not binary.closed
@@ -156,6 +166,8 @@ class TestTcc:
         tcc.build_to_exe(filename, link_unit)
         assert subprocess.call(str(filename)) == 123
 
+    @pytest.mark.skipif(platform.system() != 'Windows',
+                        reason='only windows has .exe postfix')
     def test_buildToExe_addsExeSuffixToReturnedFilename(self, tcc, tmp_path):
         exe_binary = tcc.build_to_exe(tmp_path/'program', self.SIMPLE_LINK_UNIT)
         assert exe_binary.filename.suffix == '.exe'
@@ -175,12 +187,7 @@ class TestTcc:
         assert exe_binary.filename.suffix == ''
 
     def test_buildToLib_createsDynamicLibraryFile(self, tcc, tmp_path):
-        if platform.system() == 'Windows':
-            filename = tmp_path / 'library.dll'
-        elif platform.system() == 'Darwin':
-            filename = tmp_path / 'program.dylib'
-        else:
-            filename = tmp_path / 'program.so'
+        filename = tmp_path / ('library' + LIB_SUFFIX)
         link_unit = pytcc.CCode('__attribute__((dllexport)) int func(void);\n'
                                 'int func(void) { return 123; }')
         tcc.build_to_lib(filename, link_unit)
@@ -188,7 +195,7 @@ class TestTcc:
         assert dll.func() == 123
 
     def test_buildToLib_onDynamicOption_exportsAllSymbols(self, tmp_path):
-        filename = tmp_path / 'library.dll'
+        filename = tmp_path / ('library' + LIB_SUFFIX)
         link_unit = pytcc.CCode('int func(void) { return 123; }')
         tcc = pytcc.TCC('-rdynamic')
         tcc.build_to_lib(filename, link_unit)
@@ -197,15 +204,13 @@ class TestTcc:
 
     def test_buildToLib_addsDllSuffixToReturnedFilename(self, tcc, tmp_path):
         dll_binary = tcc.build_to_lib(tmp_path/'library', pytcc.CCode(''))
-        assert dll_binary.filename.suffix == '.dll'
+        assert dll_binary.filename.suffix == LIB_SUFFIX
 
     def test_buildToLib_makesReturnedFilenameAbsolute(self, tcc, tmp_path):
         original_path = Path.cwd()
         os.chdir(tmp_path)
-        try:
-            dll_binary = tcc.build_to_lib(tmp_path/'library', pytcc.CCode(''))
-        finally:
-            os.chdir(original_path)
+        dll_binary = tcc.build_to_lib('library', pytcc.CCode(''))
+        os.chdir(original_path)
         assert dll_binary.filename.parent == tmp_path
 
     def test_buildToLib_withAutoAddSuffixSetToFalse_doesNotAddSuffix(self, tcc, tmp_path):
@@ -215,7 +220,7 @@ class TestTcc:
 
     def test_buildToArch_createsArchiveFile(self, tcc, tmp_path):
         arch_filename = tmp_path / 'library.a'
-        exe_filename = tmp_path / 'main.exe'
+        exe_filename = tmp_path / ('main' + EXE_SUFFIX)
         link_unit0 = pytcc.CCode('int func() { return 123; }')
         link_unit1 = pytcc.CCode('int func(); int main() { return func(); }')
         arch_tcc = pytcc.TCC()

@@ -31,9 +31,36 @@ First of all you have to build the TCC binaries by running cmake to
 create your platform specific project files and then build your project
 files. In a second step you build the python C-extension via setup.py
 
+
+## Linux
+
 ```
->> cmake -A x64 -B tinycc-bin\win64
->> cmake --build tinycc-bin\win64 --config Release
+>> cmake -B tinycc-bin/linux64
+>> cmake --build tinycc-bin/linux64 --config Release
+>> tox
+```
+
+## macOS
+
+```
+>> cmake -B tinycc-bin/mac64
+>> cmake --build tinycc-bin/mac64 --config Release
+>> tox
+```
+
+## Win32
+
+```
+>> cmake -A Win32 -B tinycc-bin/win32
+>> cmake --build tinycc-bin/win32 --config Release
+>> tox
+```
+
+## Win64
+
+```
+>> cmake -A x64 -B tinycc-bin/win64
+>> cmake --build tinycc-bin/win64 --config Release
 >> tox
 ```
 
@@ -47,9 +74,19 @@ set the environment variable ``TCC_BUILD_DIR`` to the corresponding directory.
 # Howto debug
 
 To debug pytcc it is recommended to run cmake when the python environment
-that shall be used for the tests is activated (i.e. after running tox you
-could manually do this via ``.tox/py36/Scripts/activate``).
-Cmake will then create a additional target: "pytcc".
+that shall be used for the tests is activated.
+CMake will then create an additional target: "pytcc".
 This one can be used for creating the C extention without setup.py.
 As cmake is supported by most C IDEs you can use the resulting project file
-to debug the project.
+to debug the project:
+
+For example on linux the sequence looks like:
+``
+>> source .tox/py36/bin/activate  # tox has to be run before this command!
+>> cd tinycc-bin/linux64
+>> rm *                           # necessary as CMake cache has to be reset
+>> cmake ../..
+>> make pytcc
+>> export PYTHONPATH=.
+>> python -m pytest ../../tests
+```

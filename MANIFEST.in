@@ -2,4 +2,6 @@ include  README.md
 include  PYTCC_VERSION
 include  tinycc/VERSION
 include  tinycc/libtcc.h
-include  tinycc-bin/win32/libtcc.lib
+include  tinycc-bin/*/libtcc.lib
+include  tinycc-bin/*/libtcc.a
+include  tinycc-bin/*/rtlib/libtcc1-*.a
