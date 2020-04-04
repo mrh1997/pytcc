@@ -15,6 +15,7 @@ __pycache__
 /build
 
 # CLion
+/.vscode
 /.idea
 /cmake-build-*
 
