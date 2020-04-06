@@ -6,9 +6,15 @@ jobs:
 
     strategy:
       matrix:
-        architecture: [32, 64]
+        os: [windows-2019, ubuntu-18.04]
+        arch: [x86, x64]
+        exclude:
+          # ubuntu is not available in 32bit flavuor any more
+          - os: ubuntu-18.04
+            arch: x86
 
-    runs-on: windows-latest
+    runs-on: ${{matrix.os}}
+
     steps:
 
       - name: Checkout Repository
@@ -16,27 +22,36 @@ jobs:
         with:
           submodules: true
 
-      - name: Build 32bit static libtcc and runtime library Projectfile
-        if: matrix.architecture == 32
+      - name: Build static libtcc and runtime library Projectfile
+        shell: bash
         run: |
-          cmake -A Win32 -B tinycc-bin\win32
+          declare -A OS=(
+            [windows-2019]=win
+            [ubuntu-18.04]=linux )
+          declare -A ARCHBITS=(
+            [x86]=32
+            [x64]=64 )
+          declare -A ARCHOPTS=(
+            [windows-2019-x86]='-A Win32'
+            [windows-2019-x64]='-A x64' )
+          OUT_DIR=tinycc-bin/${OS[${{matrix.os}}]}${ARCHBITS[${{matrix.arch}}]}
+          cmake -B $OUT_DIR ${ARCHOPTS[${{matrix.os}}-${{matrix.arch}}]}
+          cmake --build $OUT_DIR --config Release
 
-      - name: Build 64bit static libtcc and runtime library Projectfile
-        if: matrix.architecture == 64
-        run: |
-          cmake -A x64 -B tinycc-bin\win64
-
-      - name: Build static libtcc and runtime library Binary
-        run: |
-          cmake --build tinycc-bin\win${{ matrix.architecture }} --config Release
+      - name: Setup Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+          architecture: ${{matrix.arch}}
 
       - name: Build Wheel
         run: |
-          py -3.6-${{ matrix.architecture }} -m pip wheel -w wheels .
+          python -m pip wheel -w wheels .
 
       - name: Run Unittests
+        shell: bash
         run: |
-          py -3.6-${{ matrix.architecture }} -m venv venv
-          venv\Scripts\activate
+          python -m venv venv
+          . venv/*/activate
           pip install -f wheels pytcc pytest
           pytest
