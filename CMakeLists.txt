@@ -43,22 +43,10 @@ else()
         ${TCC_DIR}/x86_64-link.c
         ${TCC_DIR}/i386-asm.c)
 endif()
-set (GLOBAL_DEFINES  "\
-    #define ONE_SOURCE 0 \n\
-    #define TCC_TARGET_${TARGET_ARCHITECTURE_NAME} \n\
-    #define TCC_VERSION \"${TCC_VERSION}\" \n\
-    #define TCC_LIBTCC1 \"libtcc1-${TARGET_ARCHITECTURE}.a\" \n\
-    #define CONFIG_TCCDIR  \".\"  \n")
 if (WIN32)
     list (APPEND CODE_GENERATOR_SRCS   ${TCC_DIR}/tccpe.c)
-    string (APPEND GLOBAL_DEFINES
-            "    #define TCC_TARGET_PE\n")
-elseif (UNIX)
-    string (APPEND GLOBAL_DEFINES
-            "    #define CONFIG_USE_LIBGCC\n"
-            "    #define CONFIG_TRIPLET  \"x86_64-linux-gnu\" \n")
 endif()
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/tcc-config/config.h   ${GLOBAL_DEFINES})
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/tcc-config/config.h)
 add_library(libtcc STATIC
     ${TCC_DIR}/libtcc.c
     ${TCC_DIR}/tccpp.c
@@ -67,7 +55,20 @@ add_library(libtcc STATIC
     ${TCC_DIR}/tccasm.c
     ${TCC_DIR}/tccrun.c
     ${CODE_GENERATOR_SRCS})
-if(NOT WIN32)
+target_compile_definitions(libtcc
+    PRIVATE ONE_SOURCE=0
+    PUBLIC "TCC_TARGET_${TARGET_ARCHITECTURE_NAME}="
+    PUBLIC TCC_LIBTCC1=\"libtcc1-${TARGET_ARCHITECTURE}.a\"
+    PRIVATE CONFIG_TCCDIR=\".\")
+target_compile_definitions(libtcc PUBLIC
+    TCC_VERSION=\"${TCC_VERSION}\")
+if(WIN32)
+    target_compile_definitions(libtcc PUBLIC
+        "TCC_TARGET_PE=")
+elseif (UNIX)
+    target_compile_definitions(libtcc PUBLIC
+        "CONFIG_USE_LIBGCC="
+        CONFIG_TRIPLET=\"x86_64-linux-gnu\")
     target_link_libraries(libtcc PRIVATE
         dl ${CMAKE_THREAD_LIBS_INIT})
 endif()
