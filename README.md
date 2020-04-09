@@ -81,7 +81,7 @@ As cmake is supported by most C IDEs you can use the resulting project file
 to debug the project:
 
 For example on linux the sequence looks like:
-``
+```
 >> source .tox/py36/bin/activate  # tox has to be run before this command!
 >> cd tinycc-bin/linux64
 >> rm *                           # necessary as CMake cache has to be reset
