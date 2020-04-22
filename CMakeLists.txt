@@ -59,16 +59,22 @@ target_compile_definitions(libtcc
     PRIVATE ONE_SOURCE=0
     PUBLIC "TCC_TARGET_${TARGET_ARCHITECTURE_NAME}="
     PUBLIC TCC_LIBTCC1=\"libtcc1-${TARGET_ARCHITECTURE}.a\"
-    PRIVATE CONFIG_TCCDIR=\".\")
+    PRIVATE CONFIG_TCCDIR=\".\"
+    PUBLIC _FORTIFY_SOURCE=0)
 target_compile_definitions(libtcc PUBLIC
     TCC_VERSION=\"${TCC_VERSION}\")
 if(WIN32)
     target_compile_definitions(libtcc PUBLIC
         "TCC_TARGET_PE=")
 elseif (UNIX)
-    target_compile_definitions(libtcc PUBLIC
-        "CONFIG_USE_LIBGCC="
-        CONFIG_TRIPLET=\"x86_64-linux-gnu\")
+    if (APPLE)
+        target_compile_definitions(libtcc PUBLIC
+            "TCC_TARGET_MACHO=")
+    else()
+        target_compile_definitions(libtcc PUBLIC
+            "CONFIG_USE_LIBGCC="
+            CONFIG_TRIPLET=\"x86_64-linux-gnu\")
+    endif()
     target_link_libraries(libtcc PRIVATE
         dl ${CMAKE_THREAD_LIBS_INIT})
 endif()
@@ -96,7 +102,7 @@ target_link_libraries(tcc PRIVATE libtcc)
 
 set(RTLIB_SRCFILES
     ${TCC_DIR}/lib/libtcc1.c
-    ${TCC_DIR}/lib/bcheck.c)
+    ${TCC_DIR}/lib/va_list.c)
 if (${TARGET_ARCHITECTURE} EQUAL 32)
     list (APPEND RTLIB_SRCFILES
         ${TCC_DIR}/lib/alloca86.S
@@ -118,6 +124,10 @@ if (WIN32)
         ${TCC_DIR}/win32/lib/chkstk.S)
     list (APPEND TCC_INCLUDE_DIRS
             -I${TCC_DIR}/win32/include -I${TCC_DIR}/win32/include/winapi)
+endif()
+if (NOT APPLE)
+    list (APPEND RTLIB_SRCFILES
+        ${TCC_DIR}/lib/bcheck.c)
 endif()
 
 # compile C files to object files

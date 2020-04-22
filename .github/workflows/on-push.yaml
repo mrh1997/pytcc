@@ -6,11 +6,13 @@ jobs:
 
     strategy:
       matrix:
-        os: [windows-2019, ubuntu-18.04]
+        os: [windows-2019, ubuntu-18.04, macos-10.15]
         arch: [x86, x64]
         exclude:
-          # ubuntu is not available in 32bit flavuor any more
+          # ubuntu and macOS are not available in 32bit flavuor any more
           - os: ubuntu-18.04
+            arch: x86
+          - os: macos-10.15
             arch: x86
 
     runs-on: ${{matrix.os}}
@@ -22,20 +24,24 @@ jobs:
         with:
           submodules: true
 
-      - name: Build static libtcc and runtime library Projectfile
+      - name: Build static libtcc and runtime library (libtcc1.a)
         shell: bash
         run: |
-          declare -A OS=(
-            [windows-2019]=win
-            [ubuntu-18.04]=linux )
-          declare -A ARCHBITS=(
-            [x86]=32
-            [x64]=64 )
-          declare -A ARCHOPTS=(
-            [windows-2019-x86]='-A Win32'
-            [windows-2019-x64]='-A x64' )
-          OUT_DIR=tinycc-bin/${OS[${{matrix.os}}]}${ARCHBITS[${{matrix.arch}}]}
-          cmake -B $OUT_DIR ${ARCHOPTS[${{matrix.os}}-${{matrix.arch}}]}
+          case ${{matrix.os}} in
+            "ubuntu-18.04") OS=linux;;
+            "windows-2019") OS=win;;
+            "macos-10.15")  OS=mac;;
+          esac
+          case ${{matrix.arch}} in
+            x86) ARCHBITS=32;;
+            x64) ARCHBITS=64;;
+          esac
+          case ${OS}${ARCHBITS} in
+            win32) ARCHOPTS='-A Win32';;
+            win64) ARCHOPTS='-A x64';;
+          esac
+          OUT_DIR=tinycc-bin/${OS}${ARCHBITS}
+          cmake -B $OUT_DIR $ARCHOPTS
           cmake --build $OUT_DIR --config Release
 
       - name: Setup Python

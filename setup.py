@@ -11,7 +11,7 @@ except ImportError:
     def cythonize(ext, **argv): return ext
 
 ARCHITECTURE = int(platform.architecture()[0][:2])
-OS = dict(Windows='win', Linux='linux')[platform.system()]
+OS = dict(Windows='win', Linux='linux', Darwin='mac')[platform.system()]
 # TCC_BUILD_DIR can be used to link against alternative TCC library build.
 # Please note that this path has to be absolute (or MANIFEST.in had
 # to be adapted)

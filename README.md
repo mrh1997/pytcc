@@ -84,7 +84,7 @@ For example on linux the sequence looks like:
 ```
 >> source .tox/py36/bin/activate  # tox has to be run before this command!
 >> cd tinycc-bin/linux64
->> rm *                           # necessary as CMake cache has to be reset
+>> rm -R *                        # necessary as CMake cache has to be reset
 >> cmake ../..
 >> make pytcc
 >> export PYTHONPATH=.

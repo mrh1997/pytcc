@@ -120,6 +120,8 @@ cdef class InMemBinary:
     cdef dict _global_defines
 
     def __init__(self, output:int):
+        if platform.system() == 'Darwin' and output != TCC_OUTPUT_MEMORY:
+            raise TccError('exe/lib file generation on macOS not supported yet')
         self._warnings = []
         self._closed = False
         self._relocated = False
