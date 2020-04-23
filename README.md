@@ -1,21 +1,66 @@
-**Work in Progress!**
-
 PyTCC shall become a python extension that contains 
 [TCC](https://en.wikipedia.org/wiki/Tiny_C_Compiler), 
-a full fledged C compiler from Fabrice Bellard.
+a full-fledged C compiler originally written by Fabrice Bellard and
+now actively maintained by community.
 
-In a first step it will only be a one to one adaption of the API
+This extensions provides a pythonic interface of the API
 of TCC's tcclib. This library allows not only generating executables and 
 libraries, but also running the generated code in the addressspace
-of the current process without the need of creating a new file.
+of your python process without the need of creating a file on disk.
 
-Current status:
-* Supports 32bit Python on Windows
-* Provide tcclib API in Python
 
-Roadmap:
-* Create Wheels for all platforms
-* MAYBE: Make it Crossplatform
+# First Steps
+
+
+To compile a bunch of C files to ank executable and run it (with include/library
+search path and macros specified):
+```python
+import pytcc
+import subprocess
+compiler = pytcc.TCC(include_dirs=['incl'], library_dirs=['libs'])
+exe_binary = compiler.build_to_exe('exename', 'src1.c', 'src2.c', MACRO="value")
+subprocess.run([str(exe_binary.filename)])
+```
+
+Alternatively you could build the library in memory and retrieve its symbols:
+```python
+import pytcc
+import ctypes
+func_t = ctypes.CFUNCTYPE(None, ctypes.c_int)
+compiler = pytcc.TCC()
+mem_binary = tcc.build_to_mem('src1.c', 'src2.c')
+var_obj = ctypes.c_int.from_address(mem_binary['var'])
+func_obj = func_t.from_address(mem_binary['func'])
+func_obj(var_obj)
+```
+
+If you want to build dynamic library from in-memory source code it would look
+like:
+```python
+import pytcc
+import ctypes
+compiler = pytcc.TCC()
+lib_binary = pytcc.build_to_lib('libname', pytcc.CCode('int func(int p) { return p+1; }'))
+lib = ctypes.CDLL(str(lib_binary.filename))
+print(lib.func(123).value)
+```
+
+
+# Current status
+
+![CI Badge](https://github.com/mrh1997/pytcc/workflows/Build%20pytcc%20and%20run%20unittests/badge.svg "Status of CI run of head")
+
+* Provides tcclib API as pythonic interface
+* Supports all major platforms:
+   * Windows x86 and x64
+   * macOS x64 (does not support executable/library generation yet)
+   * linux x64
+
+## Roadmap
+* Create PIP Packages
+* Ensure that it works completely standalone (currently on linux and macos
+  headerfiles from glibs/darwin are required; this means the GCC had to be 
+  installed)
 * MAYBE: Extend TCC (and PyTCC) to provide access to AST
 
 
@@ -29,46 +74,42 @@ required as prerequisites:
 
 First of all you have to build the TCC binaries by running cmake to
 create your platform specific project files and then build your project
-files. In a second step you build the python C-extension via setup.py
-
+files. In the last step you build the python C-extension as wheel via setup.py.
 
 ## Linux
-
 ```
 >> cmake -B tinycc-bin/linux64
 >> cmake --build tinycc-bin/linux64 --config Release
->> tox
+>> pip wheel -w wheels .
 ```
 
 ## macOS
-
 ```
 >> cmake -B tinycc-bin/mac64
 >> cmake --build tinycc-bin/mac64 --config Release
->> tox
+>> pip wheel -w wheels .
 ```
 
 ## Win32
-
 ```
 >> cmake -A Win32 -B tinycc-bin/win32
 >> cmake --build tinycc-bin/win32 --config Release
->> tox
+>> pip wheel -w wheels .
 ```
 
 ## Win64
-
 ```
 >> cmake -A x64 -B tinycc-bin/win64
 >> cmake --build tinycc-bin/win64 --config Release
->> tox
+>> pip wheel -w wheels .
 ```
 
-If you build on linux or mac replace "win64" by "linux64" or "mac64";
-To build on 32bit architecture replace "win64" by "win32" and "x64" by "Win32".
+Alternatively you could choose any directory as output for the TCC libraries
+build by cmake and set the environment variable ``TCC_BUILD_DIR`` to the 
+corresponding directory.
 
-Alternatively you could choose any directory as output for the TCC binary and
-set the environment variable ``TCC_BUILD_DIR`` to the corresponding directory.
+If you want to run the unittests the recommended way is running tox after you
+built the TCC binaries.
 
 
 # Howto debug
