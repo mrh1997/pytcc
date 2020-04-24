@@ -178,7 +178,7 @@ class TestTcc:
                         reason='only windows has .exe postfix')
     def test_buildToExe_addsExeSuffixToReturnedFilename(self, tcc, tmp_path):
         exe_binary = tcc.build_to_exe(tmp_path/'program', self.SIMPLE_LINK_UNIT)
-        assert exe_binary.filename.suffix == '.exe'
+        assert exe_binary.path.suffix == '.exe'
 
     @pytest.mark.skipif(platform.system()=='Darwin', reason='no mac support yet')
     def test_buildToExe_makesReturnedFilenameAbsolute(self, tcc, tmp_path):
@@ -188,13 +188,13 @@ class TestTcc:
             exe_binary = tcc.build_to_exe('program', self.SIMPLE_LINK_UNIT)
         finally:
             os.chdir(original_path)
-        assert exe_binary.filename.parent == tmp_path
+        assert exe_binary.path.parent == tmp_path
 
     @pytest.mark.skipif(platform.system()=='Darwin', reason='no mac support yet')
     def test_buildToExe_withAutoAddSuffixSetToFalse_doesNotAddExeSuffix(self, tcc, tmp_path):
         exe_binary = tcc.build_to_exe(tmp_path/'program', self.SIMPLE_LINK_UNIT,
                                       auto_add_suffix=False)
-        assert exe_binary.filename.suffix == ''
+        assert exe_binary.path.suffix == ''
 
     @pytest.mark.skipif(platform.system()=='Darwin', reason='no mac support yet')
     def test_buildToLib_createsDynamicLibraryFile(self, tcc, tmp_path):
@@ -217,7 +217,7 @@ class TestTcc:
     @pytest.mark.skipif(platform.system()=='Darwin', reason='no mac support yet')
     def test_buildToLib_addsDllSuffixToReturnedFilename(self, tcc, tmp_path):
         dll_binary = tcc.build_to_lib(tmp_path/'library', pytcc.CCode(''))
-        assert dll_binary.filename.suffix == LIB_SUFFIX
+        assert dll_binary.path.suffix == LIB_SUFFIX
 
     @pytest.mark.skipif(platform.system()=='Darwin', reason='no mac support yet')
     def test_buildToLib_makesReturnedFilenameAbsolute(self, tcc, tmp_path):
@@ -225,13 +225,13 @@ class TestTcc:
         os.chdir(tmp_path)
         dll_binary = tcc.build_to_lib('library', pytcc.CCode(''))
         os.chdir(original_path)
-        assert dll_binary.filename.parent == tmp_path
+        assert dll_binary.path.parent == tmp_path
 
     @pytest.mark.skipif(platform.system()=='Darwin', reason='no mac support yet')
     def test_buildToLib_withAutoAddSuffixSetToFalse_doesNotAddSuffix(self, tcc, tmp_path):
         exe_binary = tcc.build_to_lib(tmp_path/'library', pytcc.CCode(''),
                                       auto_add_suffix=False)
-        assert exe_binary.filename.suffix == ''
+        assert exe_binary.path.suffix == ''
 
     @pytest.mark.skipif(platform.system()=='Darwin', reason='no mac support yet')
     def test_buildToArch_createsArchiveFile(self, tcc, tmp_path):

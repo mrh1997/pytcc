@@ -238,9 +238,9 @@ class FileBinary:
         abs_filename = Path.cwd() / Path(filename)
         if auto_add_suffix:
             suffix = self.DEFAULT_SUFFIXES[dest_os or platform.system()]
-            self.filename = abs_filename.with_suffix(suffix)
+            self.path = abs_filename.with_suffix(suffix)
         else:
-            self.filename = abs_filename
+            self.path = abs_filename
         self.warnings = warnings or []
 
 
@@ -290,7 +290,7 @@ class ArchBinary(FileBinary, LinkUnit):
         Darwin='.a')
 
     def link_into(self, bin:InMemBinary):
-        if tcc_add_file(bin.tcc_state, c_str(str(self.filename))) == -1:
+        if tcc_add_file(bin.tcc_state, c_str(str(self.path))) == -1:
             raise CompileError(bin.warnings[-1])
 
 
@@ -323,10 +323,10 @@ class SourceFile(CompileUnit):
 
     def __init__(self, filename, defines=None, **defines2):
         super().__init__(defines, **defines2)
-        self.filename = filename
+        self.path = filename
 
     def _link_c_code(self, bin:InMemBinary):
-        return tcc_add_file(bin.tcc_state, c_str(self.filename))
+        return tcc_add_file(bin.tcc_state, c_str(self.path))
 
 
 class CFile(SourceFile):
@@ -402,8 +402,8 @@ class TCC:
         mem_bin = InMemBinary(TCC_OUTPUT_EXE)
         self._build(mem_bin, link_units)
         exe_bin = ExeBinary(filename, mem_bin._warnings, auto_add_suffix)
-        if tcc_output_file(mem_bin.tcc_state, c_str(str(exe_bin.filename)))!=0:
-            mem_bin.error(f'Failed to write executable to {exe_bin.filename}')
+        if tcc_output_file(mem_bin.tcc_state, c_str(str(exe_bin.path)))!=0:
+            mem_bin.error(f'Failed to write executable to {exe_bin.path}')
         return exe_bin
 
     def build_to_lib(self, filename:os.PathLike,
@@ -412,9 +412,9 @@ class TCC:
         mem_bin = InMemBinary(TCC_OUTPUT_DLL)
         self._build(mem_bin, link_units)
         lib_bin = LibBinary(filename, mem_bin._warnings, auto_add_suffix)
-        if tcc_output_file(mem_bin.tcc_state, c_str(str(lib_bin.filename)))!=0:
+        if tcc_output_file(mem_bin.tcc_state, c_str(str(lib_bin.path)))!=0:
             mem_bin.error(f'Failed to write dynamic library to '
-                          f'{lib_bin.filename}')
+                          f'{lib_bin.path}')
         return lib_bin
 
     def build_to_arch(self, filename:os.PathLike,
@@ -422,7 +422,7 @@ class TCC:
         mem_bin = InMemBinary(TCC_OUTPUT_OBJ)
         self._build(mem_bin, link_units, ['-ar'])
         arch_bin = ArchBinary(filename, mem_bin._warnings, False)
-        if tcc_output_file(mem_bin.tcc_state, c_str(str(arch_bin.filename)))!=0:
+        if tcc_output_file(mem_bin.tcc_state, c_str(str(arch_bin.path)))!=0:
             mem_bin.error(f'Failed to write archive file to '
-                          f'{arch_bin.filename}')
+                          f'{arch_bin.path}')
         return arch_bin

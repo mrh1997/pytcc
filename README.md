@@ -17,32 +17,36 @@ search path and macros specified):
 ```python
 import pytcc
 import subprocess
-compiler = pytcc.TCC(include_dirs=['incl'], library_dirs=['libs'])
-exe_binary = compiler.build_to_exe('exename', 'src1.c', 'src2.c', MACRO="value")
-subprocess.run([str(exe_binary.filename)])
+tcc_setup = pytcc.TCC(include_dirs=['incl'], library_dirs=['libs'], MACRO="value")
+exe_binary = tcc_setup.build_to_exe('exename', 'src1.c', 'src2.c')
+subprocess.run([str(exe_binary.path)])
 ```
 
-Alternatively you could build the library in memory and retrieve its symbols:
+If you want to build dynamic library instead of an executable and you want
+to create it from in-memory source code it would look like:
+```python
+import pytcc
+import ctypes
+tcc_setup = pytcc.TCC()
+lib_binary = tcc_setup.build_to_lib('libname', pytcc.CCode('''
+__attribute__((dllexport)) int func(int p) { 
+    return p+1; 
+}
+'''))
+lib = ctypes.CDLL(str(lib_binary.path))
+print(lib.func(123))
+```
+
+Alternatively you could build a library in memory and retrieve its symbols:
 ```python
 import pytcc
 import ctypes
 func_t = ctypes.CFUNCTYPE(None, ctypes.c_int)
-compiler = pytcc.TCC()
-mem_binary = tcc.build_to_mem('src1.c', 'src2.c')
+tcc_setup = pytcc.TCC()
+mem_binary = tcc_setup.build_to_mem('src1.c', 'src2.c')
 var_obj = ctypes.c_int.from_address(mem_binary['var'])
-func_obj = func_t.from_address(mem_binary['func'])
+func_obj = func_t(mem_binary['func'])
 func_obj(var_obj)
-```
-
-If you want to build dynamic library from in-memory source code it would look
-like:
-```python
-import pytcc
-import ctypes
-compiler = pytcc.TCC()
-lib_binary = pytcc.build_to_lib('libname', pytcc.CCode('int func(int p) { return p+1; }'))
-lib = ctypes.CDLL(str(lib_binary.filename))
-print(lib.func(123).value)
 ```
 
 
