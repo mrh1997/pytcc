@@ -38,7 +38,7 @@ if OS == 'win':
         list(collect_files(TINYCC_DIR / 'win32/lib',
                            RTLIB_DEST_DIR / 'lib', '*.def')) + \
         list(collect_files(TINYCC_DIR / 'win32/include',
-                           RTLIB_DEST_DIR /'include/win32', '*.h'))
+                           RTLIB_DEST_DIR /'include', '*.h'))
 
 setup(
     name='pytcc',

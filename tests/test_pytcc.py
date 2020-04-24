@@ -138,6 +138,12 @@ class TestTcc:
                                 'int main(void) { return(DEF); }')
         assert self.run(tcc, link_unit) == 123
 
+    def test_buildToMem_onIncludeSysHeader_ok(self, tmpdir):
+        tcc = pytcc.TCC()
+        link_unit = pytcc.CCode('#include "stdlib.h"\n'
+                                'int main(void) { return(atoi("1234")); }')
+        assert self.run(tcc, link_unit) == 1234
+
     def test_buildToMem_onOptions_ok(self):
         tcc = pytcc.TCC('-Werror')
         link_unit = pytcc.CCode('#define REDEF 1\n'
