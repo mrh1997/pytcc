@@ -60,12 +60,12 @@ target_compile_definitions(libtcc
     PUBLIC "TCC_TARGET_${TARGET_ARCHITECTURE_NAME}="
     PUBLIC TCC_LIBTCC1=\"libtcc1-${TARGET_ARCHITECTURE}.a\"
     PRIVATE CONFIG_TCCDIR=\".\"
-    PUBLIC _FORTIFY_SOURCE=0)
-target_compile_definitions(libtcc PUBLIC
-    TCC_VERSION=\"${TCC_VERSION}\")
+    PUBLIC _FORTIFY_SOURCE=0
+    PUBLIC TCC_VERSION=\"${TCC_VERSION}\")
 if(WIN32)
     target_compile_definitions(libtcc PUBLIC
-        "TCC_TARGET_PE=")
+        "TCC_TARGET_PE="
+        CONFIG_TCC_LIBPATHS=\"{B}\")
 elseif (UNIX)
     if (APPLE)
         target_compile_definitions(libtcc PUBLIC

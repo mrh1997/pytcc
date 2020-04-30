@@ -29,14 +29,14 @@ def collect_files(src_path, dest_path, glob):
         yield str(dest_incl_dir), list(map(str, src_incl_files))
 
 extra_data_files = \
-    [(str(RTLIB_DEST_DIR/'lib'), [
+    [(str(RTLIB_DEST_DIR), [
         str(TCC_BUILD_DIR / f'rtlib/libtcc1-{ARCHITECTURE}.a')])] + \
     list(collect_files(TINYCC_DIR / 'include',
                        RTLIB_DEST_DIR / 'include', '*.h'))
 if OS == 'win':
     extra_data_files += \
         list(collect_files(TINYCC_DIR / 'win32/lib',
-                           RTLIB_DEST_DIR / 'lib', '*.def')) + \
+                           RTLIB_DEST_DIR, '*.def')) + \
         list(collect_files(TINYCC_DIR / 'win32/include',
                            RTLIB_DEST_DIR /'include', '*.h'))
 
