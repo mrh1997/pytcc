@@ -1,5 +1,6 @@
 PyTCC is a python extension for
-[TCC](https://en.wikipedia.org/wiki/Tiny_C_Compiler)
+[TCC](https://en.wikipedia.org/wiki/Tiny_C_Compiler).
+
 TCC is a full-fledged, blazing fast (up to 9 times faster compilation time than GCC) and extraordinary small (about 300 kb) C99 compiler originally written by Fabrice Bellard and
 now actively maintained by community.
 
