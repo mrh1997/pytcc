@@ -138,6 +138,7 @@ class TestTcc:
                                 'int main(void) { return(DEF); }')
         assert self.run(tcc, link_unit) == 123
 
+    @pytest.mark.skipif(platform.system()=='Darwin', reason='on MAC stdlibs are not found yet')
     def test_buildToMem_onIncludeSysHeader_ok(self, tmpdir):
         tcc = pytcc.TCC()
         link_unit = pytcc.CCode('#include "stdlib.h"\n'
