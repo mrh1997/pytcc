@@ -1,6 +1,6 @@
-PyTCC shall become a python extension that contains 
-[TCC](https://en.wikipedia.org/wiki/Tiny_C_Compiler), 
-a full-fledged C compiler originally written by Fabrice Bellard and
+PyTCC is a python extension for
+[TCC](https://en.wikipedia.org/wiki/Tiny_C_Compiler)
+TCC is a full-fledged, blazing fast (up to 9 times faster compilation time than GCC) and extraordinary small (about 300 kb) C99 compiler originally written by Fabrice Bellard and
 now actively maintained by community.
 
 This extensions provides a pythonic interface of the API
@@ -57,16 +57,13 @@ func_obj(var_obj)
 * Provides tcclib API as pythonic interface
 * Supports all major platforms:
    * Windows x86 and x64
-   * macOS x64 (does not support executable/library generation yet)
+   * macOS x64 (does not support executable/library generation yet and cannot find standard headers by default)
    * linux x64
 
 ## Roadmap
-* Create PIP Packages
-* Ensure that it works completely standalone (currently on linux and macos
-  headerfiles from glibs/darwin are required; this means the GCC had to be 
-  installed)
+* Make it work on macOS without manually referring to the  headerfiles of XCode by adding the darwin headerfiles to the TCC package
+* Provide binary wheels for all win32, win64, macOS and linux on pypi
 * MAYBE: Extend TCC (and PyTCC) to provide access to AST
-
 
 # Howto Build
 
