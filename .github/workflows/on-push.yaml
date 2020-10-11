@@ -7,11 +7,11 @@ jobs:
     strategy:
       matrix:
         python: [3.6, 3.7, 3.8]
-        os: [windows-2019, ubuntu-18.04, macos-10.15]
+        os: [windows-2019, ubuntu-20.04, macos-10.15]
         arch: [x86, x64]
         exclude:
           # ubuntu and macOS are not available in 32bit flavuor any more
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             arch: x86
           - os: macos-10.15
             arch: x86
@@ -25,40 +25,30 @@ jobs:
         with:
           submodules: true
 
-      - name: Build static libtcc and runtime library (libtcc1.a)
-        shell: bash
-        run: |
-          case ${{matrix.os}} in
-            "ubuntu-18.04") OS=linux;;
-            "windows-2019") OS=win;;
-            "macos-10.15")  OS=mac;;
-          esac
-          case ${{matrix.arch}} in
-            x86) ARCHBITS=32;;
-            x64) ARCHBITS=64;;
-          esac
-          case ${OS}${ARCHBITS} in
-            win32) ARCHOPTS='-A Win32';;
-            win64) ARCHOPTS='-A x64';;
-          esac
-          OUT_DIR=tinycc-bin/${OS}${ARCHBITS}
-          cmake -B $OUT_DIR $ARCHOPTS
-          cmake --build $OUT_DIR --config Release
-
       - name: Setup Python
         uses: actions/setup-python@v1
         with:
           python-version: ${{matrix.python}}
           architecture: ${{matrix.arch}}
 
-      - name: Build Wheel
+      - name: Build Wheel for Manylinux2014
+        if: startsWith(matrix.os, 'ubuntu')
+        uses: RalfG/python-wheels-manylinux-build@v0.3.1-manylinux2014_x86_64
+        with:
+          pre-build-command: 'bash .github/workflows/build-libtcc.sh ${{matrix.os}} ${{matrix.arch}}'
+          python-versions: '${{ fromJson(''{"3.6": "cp36-cp36m", "3.7": "cp37-cp37m", "3.8": "cp38-cp38"}'')[matrix.python] }}'
+          build-requirements: cython
+          pip-wheel-args: '-w ./wheels --no-deps'
+
+      - name: Build Wheel for Windows/macOS
+        if: startsWith(matrix.os, 'windows') || startsWith(matrix.os, 'macos')
+        shell: bash
         run: |
+          bash .github/workflows/build-libtcc.sh  ${{matrix.os}} ${{matrix.arch}}
           python -m pip wheel -w wheels .
 
       - name: Run Unittests
         shell: bash
         run: |
-          python -m venv venv
-          . venv/*/activate
           pip install -f wheels pytcc pytest
           pytest

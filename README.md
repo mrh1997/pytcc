@@ -9,6 +9,10 @@ of TCC's tcclib. This library allows not only generating executables and
 libraries, but also running the generated code in the addressspace
 of your python process without the need of creating a file on disk.
 
+# MEMOs
+
+- at least pip 19.3 is required for binary distribution
+
 
 # First Steps
 
