@@ -9,13 +9,21 @@ of TCC's tcclib. This library allows not only generating executables and
 libraries, but also running the generated code in the addressspace
 of your python process without the need of creating a file on disk.
 
-# MEMOs
 
-- at least pip 19.3 is required for binary distribution
+# Installation
+
+The easiest way to install the tool is via pip:
+
+```
+pip install --upgrade pip      # only needed if current pip version < 19.3
+pip install pytcc
+```
+
+Alternatively you could build it on your own from source
+(see chapter "Howto build").
 
 
 # First Steps
-
 
 To compile a bunch of C files to ank executable and run it (with include/library
 search path and macros specified):
@@ -64,11 +72,13 @@ func_obj(var_obj)
    * Windows x86 and x64
    * macOS x64 (does not support executable/library generation yet and cannot find standard headers by default)
    * linux x64
+* Provide ready to use binary wheels for all supported platforms
 
 ## Roadmap
 * Make it work on macOS without manually referring to the  headerfiles of XCode by adding the darwin headerfiles to the TCC package
-* Provide binary wheels for all win32, win64, macOS and linux on pypi
 * MAYBE: Extend TCC (and PyTCC) to provide access to AST
+
+
 
 # Howto Build
 
@@ -116,6 +126,7 @@ corresponding directory.
 
 If you want to run the unittests the recommended way is running tox after you
 built the TCC binaries.
+
 
 
 # Howto debug
