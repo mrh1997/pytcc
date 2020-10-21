@@ -73,6 +73,7 @@ func_obj(var_obj)
    * macOS x64 (does not support executable/library generation yet and cannot find standard headers by default)
    * linux x64
 * Provide ready to use binary wheels for all supported platforms
+* No dependencies (even TCC on its own is part of the binary wheel)
 
 ## Roadmap
 * Make it work on macOS without manually referring to the  headerfiles of XCode by adding the darwin headerfiles to the TCC package
