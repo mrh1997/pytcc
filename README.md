@@ -1,14 +1,17 @@
-PyTCC is a python extension for
-[TCC](https://en.wikipedia.org/wiki/Tiny_C_Compiler).
+`pytcc` is a self-contained python extension for compiling C code (utilizing [TCC](https://en.wikipedia.org/wiki/Tiny_C_Compiler)).
 
-TCC is a full-fledged, blazing fast (up to 9 times faster compilation time than GCC) and extraordinary small (about 300 kb) C99 compiler originally written by Fabrice Bellard and
-now actively maintained by community.
+What this extensions sets apart from other TCC extensions is, that no separate
+TCC installation is required. By simply adding `pytcc` to your
+`requirements.txt` your environment will be setup.
+
+TCC is a full-fledged, blazing fast (up to 9 times faster compilation time than 
+GCC) and extraordinary small (about 300 kb) C99 compiler originally written by 
+Fabrice Bellard and now actively maintained by the community.
 
 This extensions provides a pythonic interface of the API
 of TCC's tcclib. This library allows not only generating executables and 
 libraries, but also running the generated code in the addressspace
 of your python process without the need of creating a file on disk.
-
 
 # Installation
 
