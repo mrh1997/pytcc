@@ -209,7 +209,7 @@ class TestTcc:
         link_unit = pytcc.CCode('__attribute__((dllexport)) int func(void);\n'
                                 'int func(void) { return 123; }')
         tcc.build_to_lib(filename, link_unit)
-        dll = ct.CDLL(str(filename))
+        dll = ct.CDLL(os.fspath(filename))
         assert dll.func() == 123
 
     @pytest.mark.skipif(platform.system()=='Darwin', reason='no mac support yet')

@@ -54,6 +54,7 @@ add_library(libtcc STATIC
     ${TCC_DIR}/tccelf.c
     ${TCC_DIR}/tccasm.c
     ${TCC_DIR}/tccrun.c
+    ${TCC_DIR}/tccdbg.c
     ${CODE_GENERATOR_SRCS})
 target_compile_definitions(libtcc
     PRIVATE ONE_SOURCE=0
@@ -102,16 +103,9 @@ target_link_libraries(tcc PRIVATE libtcc)
 
 set(RTLIB_SRCFILES
     ${TCC_DIR}/lib/libtcc1.c
-    ${TCC_DIR}/lib/va_list.c)
-if (${TARGET_ARCHITECTURE} EQUAL 32)
-    list (APPEND RTLIB_SRCFILES
-        ${TCC_DIR}/lib/alloca86.S
-        ${TCC_DIR}/lib/alloca86-bt.S)
-elseif (${TARGET_ARCHITECTURE} EQUAL 64)
-    list (APPEND RTLIB_SRCFILES
-        ${TCC_DIR}/lib/alloca86_64.S
-        ${TCC_DIR}/lib/alloca86_64-bt.S)
-endif()
+    ${TCC_DIR}/lib/va_list.c
+    ${TCC_DIR}/lib/alloca.S
+    ${TCC_DIR}/lib/alloca-bt.S)
 set (TCC_INCLUDE_DIRS -I${TCC_DIR}/include)
 if (WIN32)
     list (APPEND RTLIB_SRCFILES

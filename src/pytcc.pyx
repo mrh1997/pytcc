@@ -12,8 +12,8 @@ TCC_LIB_PATH = Path(sys.prefix) / 'tcc-rtlib'
 
 DEF TCC_OUTPUT_MEMORY =      1 # output will be run in memory (default)
 DEF TCC_OUTPUT_EXE =         2 # executable file
-DEF TCC_OUTPUT_DLL =         3 # dynamic library
-DEF TCC_OUTPUT_OBJ =         4 # object file
+DEF TCC_OUTPUT_OBJ =         3 # object file
+DEF TCC_OUTPUT_DLL =         4 # dynamic library
 DEF TCC_OUTPUT_PREPROCESS =  5 # only preprocess (used internally)
 
 DEF TCC_RELOCATE_AUTO = 1
